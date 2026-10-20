@@ -3,6 +3,7 @@
 <h2 id="hardware-and-storage">Hardware and storage</h2>
 <ul>
 <li>HP ProLiant DL360p Gen8 with the Smart Array P420i.</li>
+<li>One Intel Xeon E5-2620 at 2.00 GHz (6 cores, 12 threads); Ubuntu reports 26 GiB of RAM available to the OS.</li>
 <li>One <strong>1.364 TiB logical drive</strong> configured as RAID0 from five 300 GB SAS disks. One failed disk was left out before the logical drive was created.</li>
 <li>Ubuntu Server <strong>26.04.1 LTS</strong> is installed on that logical drive. The disk uses LVM and ext4:</li>
 </ul>
@@ -41,6 +42,7 @@
 <h2 id="network-and-services">Network and services</h2>
 <ul>
 <li>One server network cable is in use. The last verified Ubuntu address was <code>192.168.1.241/24</code> on <code>eno1</code>.</li>
+<li>PCI inventory shows four Broadcom BCM5719 1 GbE controllers. <code>eno1</code> currently negotiates 1,000 Mb/s full duplex. This inventory did not show a 10 GbE controller.</li>
 <li>The 10 GbE switch links and any multi-link configuration are pending the required hardware and cabling. Current transfers use the single connected path.</li>
 <li>OpenSSH is enabled and Samba is active. The current Samba shares are <code>SteamGames</code> at <code>/srv/steam</code> and <code>ModelFiles</code> at <code>/srv/models</code>, both restricted to the <code>lab</code> account. The mounted volumes currently report about 420 GiB free for Steam and 707 GiB free for models. Steam downloads are underway; the model copy to the server was checksum-verified in the earlier transfer run.</li>
 <li>On the current Windows PC, <code>S:</code> maps to <code>\\192.168.1.241\SteamGames</code> and <code>M:</code> maps to <code>\\192.168.1.241\ModelFiles</code>; both mappings report <code>OK</code>, and TCP port 445 is reachable.</li>

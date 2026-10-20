@@ -5,6 +5,7 @@ Last checked: **2026-10-20**. This is the installed machine, distinct from the f
 ## Hardware and storage
 
 - HP ProLiant DL360p Gen8 with the Smart Array P420i.
+- One Intel Xeon E5-2620 at 2.00 GHz (6 cores, 12 threads); Ubuntu reports 26 GiB of RAM available to the OS.
 - One **1.364 TiB logical drive** configured as RAID0 from five 300 GB SAS disks. One failed disk was left out before the logical drive was created.
 - Ubuntu Server **26.04.1 LTS** is installed on that logical drive. The disk uses LVM and ext4:
 
@@ -20,6 +21,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 ## Network and services
 
 - One server network cable is in use. The last verified Ubuntu address was `192.168.1.241/24` on `eno1`.
+- PCI inventory shows four Broadcom BCM5719 1 GbE controllers. `eno1` currently negotiates 1,000 Mb/s full duplex. This inventory did not show a 10 GbE controller.
 - The 10 GbE switch links and any multi-link configuration are pending the required hardware and cabling. Current transfers use the single connected path.
 - OpenSSH is enabled and Samba is active. The current Samba shares are `SteamGames` at `/srv/steam` and `ModelFiles` at `/srv/models`, both restricted to the `lab` account. The mounted volumes currently report about 420 GiB free for Steam and 707 GiB free for models. Steam downloads are underway; the model copy to the server was checksum-verified in the earlier transfer run.
 - On the current Windows PC, `S:` maps to `\\192.168.1.241\SteamGames` and `M:` maps to `\\192.168.1.241\ModelFiles`; both mappings report `OK`, and TCP port 445 is reachable.
