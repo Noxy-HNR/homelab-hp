@@ -2,6 +2,8 @@
 
 The HP is your always-on storage server. This page installs its file shares, the Steam drive target, and the web app on port **8088**.
 
+> **Current server notice (2026-10-20):** This DL360p Gen8 is already running Ubuntu Server 26.04.1 on one P420i RAID0 logical drive, split into `/`, `/srv/steam`, and `/srv/models`. Only one network cable is in use; the planned 10 GbE switch links are not installed. The deployment commands on this page still describe the earlier Ubuntu 24.04, `/srv/homelab` + `/srv/bulk`, and 10 GbE design. **Do not run those commands on the current server.** See [the verified current layout and remaining work](../HP-CURRENT-STATE.md).
+
 **Before you start** you must have finished Parts 1 and 2 of the [start guide](../START-HERE.md):
 
 - Ubuntu Server 24.04 is installed on the HP.

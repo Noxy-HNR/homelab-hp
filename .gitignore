@@ -24,3 +24,12 @@ Thumbs.db
 **/token.txt
 preview-data/
 test-results/
+
+# Runtime data: keep downloaded models and Steam library content out of Git.
+/models/
+/steam/
+/steam-games/
+/SteamLibrary/
+**/steamapps/
+*.gguf
+*.safetensors

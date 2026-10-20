@@ -1,0 +1,61 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HP DL360p Gen8: current deployment · Homelab</title><link rel="stylesheet" href="assets/guide.css"></head><body><aside><strong>Homelab</strong><p>Your setup guide.<br>One machine at a time.</p><a href="guide.html">Start here</a><a href="INSTALL.html">1 · Hardware & Ubuntu</a><a href="setup/HP.html">2 · HP NAS</a><a href="HP-CURRENT-STATE.html">HP current state</a><a href="setup/DELL.html">3 · Dell workbench</a><a href="setup/WINDOWS.html">4 · Windows PCs</a><a href="GAME-DRIVE.html">5 · Steam drive</a><a href="DAILY-USE.html">Use your homelab</a><a href="PARTS.html">Parts to buy</a><a href="VALIDATION.html">What is tested</a></aside><main><div class="topbar"><span>INSTALL · USE · RECOVER</span><button id="print">Print this page</button></div><h1 id="hp-dl360p-gen8-current-deployment">HP DL360p Gen8: current deployment</h1>
+<p>Last checked: <strong>2026-10-20</strong>. This is the installed machine, distinct from the future network plan in the older setup guides.</p>
+<h2 id="hardware-and-storage">Hardware and storage</h2>
+<ul>
+<li>HP ProLiant DL360p Gen8 with the Smart Array P420i.</li>
+<li>One <strong>1.364 TiB logical drive</strong> configured as RAID0 from five 300 GB SAS disks. One failed disk was left out before the logical drive was created.</li>
+<li>Ubuntu Server <strong>26.04.1 LTS</strong> is installed on that logical drive. The disk uses LVM and ext4:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Mount</th>
+<th>Logical volume</th>
+<th style="text-align: right;">Size</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td><code>ubuntu-lv</code></td>
+<td style="text-align: right;">100 GiB</td>
+</tr>
+<tr>
+<td><code>/boot</code></td>
+<td>disk partition</td>
+<td style="text-align: right;">2 GiB</td>
+</tr>
+<tr>
+<td><code>/srv/steam</code></td>
+<td><code>steam</code></td>
+<td style="text-align: right;">500 GiB</td>
+</tr>
+<tr>
+<td><code>/srv/models</code></td>
+<td><code>models</code></td>
+<td style="text-align: right;">794.82 GiB</td>
+</tr>
+</tbody>
+</table>
+<p>The Steam and models areas are separate logical volumes on the <strong>same RAID0 array</strong>. They are not separate physical arrays and RAID0 provides no disk-failure protection.</p>
+<h2 id="network-and-services">Network and services</h2>
+<ul>
+<li>One server network cable is in use. The last verified Ubuntu address was <code>192.168.1.241/24</code> on <code>eno1</code>.</li>
+<li>The 10 GbE switch links and any multi-link configuration are pending the required hardware and cabling. Current transfers use the single connected path.</li>
+<li>OpenSSH was enabled and Samba was active in the last server-side check. Steam downloads are underway; the model copy to the server was checksum-verified in the earlier transfer run.</li>
+<li>Password rotation is intentionally deferred.</li>
+</ul>
+<h2 id="updates-and-firmware">Updates and firmware</h2>
+<ul>
+<li>Package metadata was refreshed and one small Python package update was installed. The simulated upgrade still showed other packages held or phased, so the OS is not fully updated yet. Avoid a reboot or disruptive service restart while Steam is downloading.</li>
+<li>The system BIOS reports HP P71 dated 2019-05-24. The P420i firmware version and installed iLO 4 version have not been confirmed. Do not report those as updated.</li>
+</ul>
+<h2 id="still-to-verify-or-decide">Still to verify or decide</h2>
+<ul>
+<li>Confirm the exact Samba share names, paths, and Windows access for both <code>/srv/steam</code> and <code>/srv/models</code>.</li>
+<li>Finish remaining Ubuntu updates at a convenient time, then verify installed firmware versions before choosing any update.</li>
+<li>Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.</li>
+<li>The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.</li>
+</ul>
+<h2 id="installer-compatibility">Installer compatibility</h2>
+<p>The existing <code>hp/deploy.sh</code> and much of <code>docs/setup/HP.md</code> describe an earlier Ubuntu 24.04 layout using <code>/srv/homelab</code>, <code>/srv/bulk</code>, and a 10 GbE interface. They have <strong>not</strong> been adapted to this Ubuntu 26.04.1 layout. Do not run that installer on this server until its assumptions and services are reviewed against the live mounts and network.</p><footer>Built from the Markdown guide in Noxy-HNR/homelab-stack. Example screenshots use local test data; the physical server checks happen during setup.</footer></main><script src="assets/guide.js"></script></body></html>

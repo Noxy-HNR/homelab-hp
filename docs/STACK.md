@@ -4,12 +4,12 @@ The goal is local AI on the laptop and desktop, a shared model library, a direct
 
 ## HP DL360p Gen8 — always on
 
-- **OS:** Ubuntu Server 24.04 LTS amd64 on the 512 GB SATA SSD. A 64 GiB ext4 root partition and the remaining SSD space at `/srv/homelab` hold the OS, dashboard and 256 GiB Steam iSCSI image.
-- **Bulk storage:** four 300 GB 2.5-inch HDDs in one Smart Array RAID0 logical drive, ext4 at `/srv/bulk`. `Projects`, `Backups` and `Models` Samba shares live here. This is about 1.09 TiB before formatting. The `Backups` share is on the same array, so it is not a separate failure copy.
-- **Network:** an HPE 560FLR-SFP+ 10 GbE port, matched owned optical modules and owned short fiber to the Cisco. The HP's chosen 10G IP is the iSCSI portal and dashboard address.
-- **Software from `hp/deploy.sh`:** OpenSSH, Samba, targetcli-fb/Linux LIO, smartmontools, ethtool, Cockpit, Restic, and the Homelab web app. The app has live server metrics, a GGUF catalog, a verified model download queue, Steam ownership status, and backup controls. The game handoff controller is installed later after both Windows initiator IQNs and SSH public keys are known.
-- **LAN services:** SMB 445, iSCSI 3260, dashboard HTTP 8088, Cockpit HTTPS 9090, SSH 22. No router port forwarding.
-- **Daily use:** browse `\\HP-IP\Models` from the laptop; leave the HP running so models and games stay available.
+- **OS and storage (deployed):** Ubuntu Server 26.04.1 LTS on the P420i's single 1.364 TiB logical drive, configured as RAID0 across five 300 GB SAS disks. LVM provides a 100 GiB ext4 root, a 500 GiB ext4 Steam volume at `/srv/steam`, and the remaining 794.82 GiB ext4 models volume at `/srv/models`; `/boot` is 2 GiB. These are separate logical volumes on the same RAID0 array, not independent or redundant disks.
+- **Network (deployed):** one server network cable is connected. Ubuntu has used `192.168.1.241/24` on `eno1`; the switch-based 10 GbE links and multi-link setup are pending the required materials. No aggregate bandwidth is configured.
+- **Software (verified so far):** OpenSSH is enabled, Samba is active, and Steam game downloads are in progress on the Steam storage. The model files were copied to the models storage. The app dashboard, Cockpit, Restic backup plans, and the managed iSCSI handoff controller are not confirmed as installed.
+- **Next steps:** finish validating the Samba share names/access from the client, complete OS updates when convenient, and later install the 10 GbE hardware before attempting any multi-link configuration. Firmware versions for iLO and P420i still need confirmation.
+- **Network services:** SSH and Samba are active. The Steam downloads are in progress and the model library is stored on the server. No multi-link network setup is active.
+- **Current-use detail:** see [HP current state](HP-CURRENT-STATE.md); current share names and client permissions should be checked from the Windows PC before labeling the setup complete.
 
 ## Dell R710 — turn on for development
 

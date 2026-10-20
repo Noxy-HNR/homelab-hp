@@ -1,6 +1,6 @@
 # Validation status
 
-**Prepared and checked offline; the physical HP, Dell, Cisco ports, purchased NICs and Windows iSCSI handoff have not yet been configured.** A parser or mocked controller test does not prove that a Smart Array, PERC, optic, cable or Windows driver will work on the target machine.
+**The HP DL360p Gen8 has been installed and has live storage and network use; the remaining planned hardware and service setup is still pending.** The rest of this repository's installers and mocked tests do not prove that a Smart Array, PERC, optic, cable or Windows driver will work on the target machine. See [HP current state](HP-CURRENT-STATE.md) for the live HP record.
 
 From a Windows clone with Python and Git for Windows installed, run:
 
@@ -14,7 +14,7 @@ The suite does **not** install packages on the HP or Dell, create arrays, format
 
 | Machine | First live checks needed during installation |
 | --- | --- |
-| HP | Smart Array shows SSD and four-HDD volumes; both ext4 mounts survive a reboot; purchased 10G NIC and owned optic load without errors and negotiate 10 Gb/s; Samba, LIO and dashboard work after reboot. |
+| HP | **Confirmed:** one P420i RAID0 logical drive; Ubuntu 26.04.1; ext4 LVM volumes mounted at `/`, `/srv/steam`, and `/srv/models`; Samba active; Steam downloads underway; one network cable. **Pending:** verify Samba share access and mount persistence after a planned reboot; install 10 GbE switch materials; confirm iLO/P420i firmware; decide whether dashboard, backup plans, and managed iSCSI handoff are needed. |
 | Dell | PERC shows the correct two-HDD volume; four onboard 1G ports are bundled in Cisco and `/proc/net/bonding/bond0`; Docker, workbench project/test/search, MCP tool connection, Cockpit and Portainer work after reboot. |
 | Desktop | Genuine X540-T1 driver loads, NIC fits and stays cool, Cat6A link negotiates 10 Gb/s; Windows tools install and a game launches from `S:`. |
 | Laptop | USB4/Thunderbolt adapter loads and negotiates 10 Gb/s; existing `C:\AI` stack remains intact; selected GGUF loads from SMB; game launches after exclusive handoff. |
