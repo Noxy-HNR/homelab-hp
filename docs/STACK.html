@@ -7,7 +7,7 @@
 <li><strong>Software (verified so far):</strong> OpenSSH is enabled, Samba is active, and Steam game downloads are in progress on the Steam storage. The model files were copied to the models storage. The app dashboard, Cockpit, Restic backup plans, and the managed iSCSI handoff controller are not confirmed as installed.</li>
 <li><strong>Next steps:</strong> finish validating the Samba share names/access from the client, complete OS updates when convenient, and later install the 10 GbE hardware before attempting any multi-link configuration. Firmware versions for iLO and P420i still need confirmation.</li>
 <li><strong>Network services:</strong> SSH and Samba are active. Samba exposes <code>SteamGames</code> (<code>/srv/steam</code>) and <code>ModelFiles</code> (<code>/srv/models</code>) to the <code>lab</code> account. The Steam downloads are in progress and the model library is stored on the server. No multi-link network setup is active.</li>
-<li><strong>Current-use detail:</strong> see <a href="HP-CURRENT-STATE.html">HP current state</a>; verify Windows access to both configured shares before labeling client access complete.</li>
+<li><strong>Current-use detail:</strong> this Windows PC maps <code>S:</code> to <code>SteamGames</code> and <code>M:</code> to <code>ModelFiles</code>; see <a href="HP-CURRENT-STATE.html">HP current state</a>.</li>
 </ul>
 <h2 id="dell-r710-turn-on-for-development">Dell R710 — turn on for development</h2>
 <ul>

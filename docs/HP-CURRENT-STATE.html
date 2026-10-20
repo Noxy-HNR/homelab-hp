@@ -43,6 +43,7 @@
 <li>One server network cable is in use. The last verified Ubuntu address was <code>192.168.1.241/24</code> on <code>eno1</code>.</li>
 <li>The 10 GbE switch links and any multi-link configuration are pending the required hardware and cabling. Current transfers use the single connected path.</li>
 <li>OpenSSH is enabled and Samba is active. The current Samba shares are <code>SteamGames</code> at <code>/srv/steam</code> and <code>ModelFiles</code> at <code>/srv/models</code>, both restricted to the <code>lab</code> account. The mounted volumes currently report about 420 GiB free for Steam and 707 GiB free for models. Steam downloads are underway; the model copy to the server was checksum-verified in the earlier transfer run.</li>
+<li>On the current Windows PC, <code>S:</code> maps to <code>\\192.168.1.241\SteamGames</code> and <code>M:</code> maps to <code>\\192.168.1.241\ModelFiles</code>; both mappings report <code>OK</code>, and TCP port 445 is reachable.</li>
 <li>Password rotation is intentionally deferred.</li>
 </ul>
 <h2 id="updates-and-firmware">Updates and firmware</h2>
@@ -52,7 +53,7 @@
 </ul>
 <h2 id="still-to-verify-or-decide">Still to verify or decide</h2>
 <ul>
-<li>Confirm Windows access to the configured <code>SteamGames</code> and <code>ModelFiles</code> shares.</li>
+<li>Confirm the two mapped drives reconnect after a future planned reboot.</li>
 <li>Finish remaining Ubuntu updates at a convenient time, then verify installed firmware versions before choosing any update.</li>
 <li>Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.</li>
 <li>The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.</li>

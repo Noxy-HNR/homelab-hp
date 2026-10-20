@@ -22,6 +22,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 - One server network cable is in use. The last verified Ubuntu address was `192.168.1.241/24` on `eno1`.
 - The 10 GbE switch links and any multi-link configuration are pending the required hardware and cabling. Current transfers use the single connected path.
 - OpenSSH is enabled and Samba is active. The current Samba shares are `SteamGames` at `/srv/steam` and `ModelFiles` at `/srv/models`, both restricted to the `lab` account. The mounted volumes currently report about 420 GiB free for Steam and 707 GiB free for models. Steam downloads are underway; the model copy to the server was checksum-verified in the earlier transfer run.
+- On the current Windows PC, `S:` maps to `\\192.168.1.241\SteamGames` and `M:` maps to `\\192.168.1.241\ModelFiles`; both mappings report `OK`, and TCP port 445 is reachable.
 - Password rotation is intentionally deferred.
 
 ## Updates and firmware
@@ -31,7 +32,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 
 ## Still to verify or decide
 
-- Confirm Windows access to the configured `SteamGames` and `ModelFiles` shares.
+- Confirm the two mapped drives reconnect after a future planned reboot.
 - Finish remaining Ubuntu updates at a convenient time, then verify installed firmware versions before choosing any update.
 - Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.
 - The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.

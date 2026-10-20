@@ -14,7 +14,7 @@ The suite does **not** install packages on the HP or Dell, create arrays, format
 
 | Machine | First live checks needed during installation |
 | --- | --- |
-| HP | **Confirmed:** one P420i RAID0 logical drive; Ubuntu 26.04.1; ext4 LVM volumes mounted at `/`, `/srv/steam`, and `/srv/models`; Samba shares `SteamGames` and `ModelFiles` map to the two data mounts; Steam downloads underway; one network cable. **Pending:** verify Windows access and mount persistence after a planned reboot; install 10 GbE switch materials; confirm iLO/P420i firmware; decide whether dashboard, backup plans, and managed iSCSI handoff are needed. |
+| HP | **Confirmed:** one P420i RAID0 logical drive; Ubuntu 26.04.1; ext4 LVM volumes mounted at `/`, `/srv/steam`, and `/srv/models`; Samba shares `SteamGames` and `ModelFiles` map to the two data mounts; this PC's `S:` and `M:` mappings are `OK`; Steam downloads underway; one network cable. **Pending:** verify mount and mapping persistence after a planned reboot; install 10 GbE switch materials; confirm iLO/P420i firmware; decide whether dashboard, backup plans, and managed iSCSI handoff are needed. |
 | Dell | PERC shows the correct two-HDD volume; four onboard 1G ports are bundled in Cisco and `/proc/net/bonding/bond0`; Docker, workbench project/test/search, MCP tool connection, Cockpit and Portainer work after reboot. |
 | Desktop | Genuine X540-T1 driver loads, NIC fits and stays cool, Cat6A link negotiates 10 Gb/s; Windows tools install and a game launches from `S:`. |
 | Laptop | USB4/Thunderbolt adapter loads and negotiates 10 Gb/s; existing `C:\AI` stack remains intact; selected GGUF loads from SMB; game launches after exclusive handoff. |
