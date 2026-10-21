@@ -108,7 +108,7 @@ acl_hint() {
     dir=$(dirname "$dir")
   done
   echo "  sudo setfacl -m u:llama:r \"$(dirname "$path")\"/*.gguf"
-  echo "  sudo setfacl -d -m u:llama:r \"$(dirname "$path")\"    # models added later"
+  echo "  sudo setfacl -d -m u:llama:rx \"$(dirname "$path")\"    # models added later"
 }
 
 health() {
@@ -190,9 +190,10 @@ case $action in
       > /etc/systemd/system/llama-server.service.d/memory.conf
     systemd-analyze verify /etc/systemd/system/llama-server.service /etc/systemd/system/llama-server-health.timer
     systemctl daemon-reload
-    systemctl enable llama-server.service llama-server-health.timer
-    systemctl start llama-server-health.timer
+    systemctl enable --now llama-server-health.timer
     if check_model; then
+      systemctl enable llama-server.service
+      systemctl reset-failed llama-server.service 2>/dev/null || true
       systemctl restart llama-server.service
       echo 'Started llama-server. Loading a large model from the array can take several minutes.'
       echo 'Check it with: sudo bash hp/llm/install-llama-server.sh verify'
