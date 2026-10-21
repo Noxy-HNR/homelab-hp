@@ -44,7 +44,6 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 
 ## Still to verify or decide
 
-- Confirm the two mapped drives reconnect after a future planned reboot.
 - Decide whether to update the P420i firmware (back up first).
 - Decide whether to open TCP 10000 to `192.168.1.0/24` so PCs can reach llama-server.
 - Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.
