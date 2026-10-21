@@ -30,7 +30,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 
 ## Services
 
-- Docker 29.1 is installed. The always-on stack runs Relay Station as `hp-always-on-relay-station-1` (healthy).
+- Docker 29.1 is installed. The [always-on stack](ALWAYS-ON.md) runs Relay Station as `hp-always-on-relay-station-1` (healthy).
 - `llama-server.service` runs llama.cpp v0.7.0 (`/opt/llama.cpp/current`) as the `llama` account on port 10000 with Cyber-Tiel-Coder-35B-A3B (UD-IQ3_XXS, 13 GB) mmapped from `/srv/models/Models`. Every request except `/health` needs the key in `/etc/homelab/llama-server/api-keys`.
 - Measured on 2026-10-21 with 6 threads: prompt processing about 12.6 tokens/s, generation about 5.2 tokens/s, and about 14.3 GB of memory in use against the 18 GB service cap.
 - The `llama` account reads models through POSIX ACLs on `/srv/models` and `/srv/models/Models` (including a default ACL for new files). On this Ubuntu release `/usr/bin/test` comes from uutils coreutils and ignores ACLs, so `runuser -u llama -- test -r FILE` reports a false failure. Check access with `runuser -u llama -- head -c1 FILE` instead.
@@ -47,6 +47,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 - Decide whether to update the P420i firmware (back up first).
 - Decide whether to open TCP 10000 to `192.168.1.0/24` so PCs can reach llama-server.
 - Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.
+- Frigate in the always-on stack is optional and not enabled. See [Always-on services](ALWAYS-ON.md).
 - The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.
 
 ## Installer compatibility
