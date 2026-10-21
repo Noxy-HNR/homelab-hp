@@ -83,9 +83,9 @@ scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db
 **Step 3. On the HP**, put it in place and start the service:
 
 ```bash
-sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db && rm /tmp/bot.db
 cd ~/homelab-stack/hp/always-on
-sudo docker compose build --pull
+sudo docker compose build --pull       # build first, so a failed build leaves nothing half-moved
+sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db && rm /tmp/bot.db
 sudo docker compose up -d
 sudo docker compose ps                 # relay-station shows (healthy) within a minute
 ```
@@ -123,7 +123,7 @@ sudo docker compose logs frigate | grep -i password
 
 **Step 4.** Open `https://192.168.1.241:8971` (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.
 
-Every later `docker compose` command needs `--profile nvr` to include Frigate.
+Every later `docker compose` command that should start, stop, rebuild or update Frigate needs `--profile nvr`.
 
 The E5-2620 has AVX but not AVX2. Frigate's CPU object detector works without AVX2, but it is slow, which is why the template keeps detection at 5 fps on a sub stream. Leave Frigate's optional semantic search, face recognition and licence-plate features off on this CPU. If the container restarts in a loop, look for `Illegal instruction` in `sudo docker compose logs frigate`. That means a component needs a newer instruction set, so stay on the pinned version and report it instead of upgrading blind.
 

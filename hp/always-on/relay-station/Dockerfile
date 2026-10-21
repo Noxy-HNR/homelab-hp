@@ -17,5 +17,4 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN python -m compileall -q /app && mkdir -p /data && chown relay:relay /data
 
 USER relay
-VOLUME ["/data"]
 CMD ["python", "-u", "/app/app.py", "--port", "9095", "--data", "/data"]

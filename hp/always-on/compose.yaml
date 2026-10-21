@@ -55,7 +55,7 @@ services:
         - -c
         - "import json,sys,urllib.request as u; r=u.urlopen('http://127.0.0.1:${RELAY_PORT:-9095}/api/health',timeout=4); sys.exit(0 if json.load(r).get('service')=='relay-station' else 1)"
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
       start_period: 20s
     deploy:
@@ -77,6 +77,10 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
     shm_size: ${FRIGATE_SHM_SIZE:-256mb}
+    # The upstream image runs its s6 supervisor as root, so it cannot use the
+    # non-root, read-only and cap_drop settings Relay Station has. It is not
+    # privileged and gets no host devices; this blocks setuid escalation.
+    security_opt: ["no-new-privileges:true"]
     environment:
       TZ: ${TZ:-UTC}
       # Frigate substitutes {FRIGATE_*} variables into config.yml, so camera

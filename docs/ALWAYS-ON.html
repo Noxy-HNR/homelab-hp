@@ -126,9 +126,9 @@ sudo bash prepare-host.sh install      # creates /srv/services/... and the Friga
 scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db
 </code></pre>
 <p><strong>Step 3. On the HP</strong>, put it in place and start the service:</p>
-<pre><code class="language-bash">sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db &amp;&amp; rm /tmp/bot.db
-cd ~/homelab-stack/hp/always-on
-sudo docker compose build --pull
+<pre><code class="language-bash">cd ~/homelab-stack/hp/always-on
+sudo docker compose build --pull       # build first, so a failed build leaves nothing half-moved
+sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db &amp;&amp; rm /tmp/bot.db
 sudo docker compose up -d
 sudo docker compose ps                 # relay-station shows (healthy) within a minute
 </code></pre>
@@ -150,7 +150,7 @@ sudo docker compose ps                 # relay-station shows (healthy) within a 
 sudo docker compose logs frigate | grep -i password
 </code></pre>
 <p><strong>Step 4.</strong> Open <code>https://192.168.1.241:8971</code> (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.</p>
-<p>Every later <code>docker compose</code> command needs <code>--profile nvr</code> to include Frigate.</p>
+<p>Every later <code>docker compose</code> command that should start, stop, rebuild or update Frigate needs <code>--profile nvr</code>.</p>
 <p>The E5-2620 has AVX but not AVX2. Frigate's CPU object detector works without AVX2, but it is slow, which is why the template keeps detection at 5 fps on a sub stream. Leave Frigate's optional semantic search, face recognition and licence-plate features off on this CPU. If the container restarts in a loop, look for <code>Illegal instruction</code> in <code>sudo docker compose logs frigate</code>. That means a component needs a newer instruction set, so stay on the pinned version and report it instead of upgrading blind.</p>
 <h2 id="5-verify">5. Verify</h2>
 <ul>
