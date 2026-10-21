@@ -197,6 +197,11 @@
 <td>Fix the mount first; see <a href="../HP-CURRENT-STATE.html">HP current state</a>.</td>
 </tr>
 <tr>
+<td><code>Port 10000 is already used by ...</code></td>
+<td>Another service holds the port. The HP app uses 8088, so this should not happen by default.</td>
+<td>Set a free <code>LLAMA_ARG_PORT</code> in the settings file.</td>
+</tr>
+<tr>
 <td><code>Model not found yet</code></td>
 <td>The GGUF is not at <code>LLAMA_ARG_MODEL</code>.</td>
 <td>Copy it there, or fix the path in the settings file.</td>

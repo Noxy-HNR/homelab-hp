@@ -138,6 +138,7 @@ To stop LAN or tailnet devices you do not trust from reaching the port at all, r
 | --- | --- | --- |
 | `Ubuntu 26.04 is required` | This is not the current HP install. | Run it on the HP. |
 | `/srv/models is not mounted` | The models volume is missing. | Fix the mount first; see [HP current state](../HP-CURRENT-STATE.md). |
+| `Port 10000 is already used by ...` | Another service holds the port. The HP app uses 8088, so this should not happen by default. | Set a free `LLAMA_ARG_PORT` in the settings file. |
 | `Model not found yet` | The GGUF is not at `LLAMA_ARG_MODEL`. | Copy it there, or fix the path in the settings file. |
 | `The llama account cannot read ...` | The model folder belongs to `lab` only. | Run the `setfacl` command the installer prints. |
 | `... larger than HOMELAB_LLAMA_MEMORY_MAX` | The model does not fit the limit. | Use the default model, or raise the limit after the RAM upgrade. |

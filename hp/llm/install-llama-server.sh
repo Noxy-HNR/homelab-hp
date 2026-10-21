@@ -47,6 +47,12 @@ check_host() {
     if (( nodes > 1 )) && [[ -z $numa ]]; then echo 'NOTE: more than one NUMA node; consider LLAMA_ARG_NUMA=distribute.'; fi
     if (( nodes == 1 )) && [[ -n $numa ]]; then echo 'NOTE: LLAMA_ARG_NUMA is set on a single-node host; it has no benefit.'; fi
   fi
+  local port holder
+  port=$( [[ -f $env_file ]] && setting LLAMA_ARG_PORT || setting LLAMA_ARG_PORT "$script_dir/llama-server.env.example")
+  holder=$(ss -Hltnp "sport = :$port" 2>/dev/null | grep -o 'users:(("[^"]*"' | head -n 1 | cut -d'"' -f2 || true)
+  if [[ -n $holder && $holder != llama-server ]]; then
+    echo "Port $port is already used by $holder. Choose another LLAMA_ARG_PORT." >&2; return 1
+  fi
 }
 
 # Exit 0 when the model is present, readable and inside the memory budget; 1 otherwise.
