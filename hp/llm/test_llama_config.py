@@ -86,6 +86,10 @@ class Settings(unittest.TestCase):
         installer = (HERE / 'install-llama-server.sh').read_text(encoding='utf-8')
         self.assertIn('-DBUILD_SHARED_LIBS=OFF', installer)  # only the binary is installed
         self.assertNotRegex(installer, r'\b(hf|huggingface-cli|wget)\b')  # never downloads models
+        # uutils `test -r` ignores ACLs on Ubuntu 26.04; the readability check must read a byte.
+        self.assertNotIn('-- test -r', installer)
+        self.assertIn('runuser -u llama -- head -c 1', installer)
+        self.assertNotIn('ufw allow 10000', installer)  # never opens the port to everyone
 
 
 class Status(http.server.BaseHTTPRequestHandler):

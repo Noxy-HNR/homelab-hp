@@ -87,7 +87,8 @@ check_model() {
   fi
   if id llama >/dev/null 2>&1; then
     for part in "${parts[@]}"; do
-      runuser -u llama -- test -r "$part" || {
+      # Read a byte: uutils `test -r` on Ubuntu 26.04 ignores POSIX ACLs.
+      runuser -u llama -- head -c 1 "$part" >/dev/null 2>&1 || {
         echo "The llama account cannot read $part." >&2
         acl_hint "$part" >&2
         return 1
@@ -109,6 +110,30 @@ acl_hint() {
   done
   echo "  sudo setfacl -m u:llama:r \"$(dirname "$path")\"/*.gguf"
   echo "  sudo setfacl -d -m u:llama:rx \"$(dirname "$path")\"    # models added later"
+}
+
+# The LAN subnet of the interface holding the default route, e.g. 192.168.1.0/24.
+lan_subnet() {
+  local dev
+  dev=$(ip -o -4 route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") {print $(i + 1); exit}}')
+  [[ -n $dev ]] && ip -o -4 route show dev "$dev" scope link proto kernel | awk '{print $1; exit}'
+}
+
+# Print the ufw rules the port needs; empty when ufw is inactive or already allows it.
+firewall_rules() {
+  local port subnet
+  command -v ufw >/dev/null && ufw status | grep -q '^Status: active' || return 0
+  port=$( [[ -f $env_file ]] && setting LLAMA_ARG_PORT || setting LLAMA_ARG_PORT "$script_dir/llama-server.env.example")
+  local status
+  status=$(ufw status)
+  subnet=$(lan_subnet)
+  if [[ -n $subnet ]] && ! grep -Eq "^$port(/tcp)?[[:space:]]+ALLOW( IN)?[[:space:]]+${subnet//./\\.}([[:space:]]|$)" <<<"$status"; then
+    echo "allow from $subnet to any port $port proto tcp comment llama-server"
+  fi
+  if ip link show tailscale0 >/dev/null 2>&1 && ! grep -Eq "^$port(/tcp)? on tailscale0[[:space:]]+ALLOW" <<<"$status"; then
+    echo "allow in on tailscale0 to any port $port proto tcp comment llama-server"
+  fi
+  return 0
 }
 
 health() {
@@ -135,6 +160,7 @@ case $action in
     else
       echo "Would build llama.cpp $llama_tag ($llama_commit) into $prefix/$llama_tag"
     fi
+    firewall_rules | sed 's/^/Would run: ufw /'
     echo 'Plan complete. Nothing was changed.'
     ;;
   install)
@@ -179,6 +205,12 @@ case $action in
     ln -sfn "$build" "$prefix/current"
     "$prefix/current/bin/llama-server" --version
 
+    # ufw is active on the HP and allows only listed ports; open this one to the LAN (and tailnet) only.
+    while read -r rule; do
+      [[ -n $rule ]] || continue
+      read -ra words <<<"$rule"
+      ufw "${words[@]}"
+    done < <(firewall_rules)
     install -m 0755 "$script_dir/llama-health.sh" /usr/local/sbin/llama-health.sh
     install -m 0644 "$script_dir/llama-server.service" /etc/systemd/system/llama-server.service
     install -m 0644 "$script_dir/llama-server-health.service" /etc/systemd/system/llama-server-health.service
@@ -209,6 +241,9 @@ case $action in
     systemctl is-active --quiet llama-server.service || { echo 'llama-server.service is not running' >&2; journalctl -u llama-server -n 40 --no-pager; exit 1; }
     systemctl is-active --quiet llama-server-health.timer || { echo 'llama-server-health.timer is not active' >&2; exit 1; }
     health
+    if [[ -n $(firewall_rules) ]]; then
+      echo "ufw blocks port $(setting LLAMA_ARG_PORT) from other machines. Run install again to open it to the LAN." >&2; exit 1
+    fi
     echo 'PASS: llama-server, health check and API'
     ;;
 esac

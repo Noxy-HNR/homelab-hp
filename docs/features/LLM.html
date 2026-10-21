@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CPU model server (HP) · Homelab</title><link rel="stylesheet" href="../assets/guide.css"></head><body><aside><strong>Homelab</strong><p>Your setup guide.<br>One machine at a time.</p><a href="../guide.html">Start here</a><a href="../INSTALL.html">1 · Hardware & Ubuntu</a><a href="../setup/HP.html">2 · HP NAS</a><a href="../HP-CURRENT-STATE.html">HP current state</a><a href="../setup/DELL.html">3 · Dell workbench</a><a href="../setup/WINDOWS.html">4 · Windows PCs</a><a href="../GAME-DRIVE.html">5 · Steam drive</a><a href="../DAILY-USE.html">Use your homelab</a><a href="../PARTS.html">Parts to buy</a><a href="../VALIDATION.html">What is tested</a></aside><main><div class="topbar"><span>INSTALL · USE · RECOVER</span><button id="print">Print this page</button></div><h1 id="cpu-model-server-hp">CPU model server (HP)</h1>
 <p>The HP can serve a language model over an OpenAI-compatible API with llama.cpp's <code>llama-server</code>. It runs on the CPU only, so it suits Mixture-of-Experts (MoE) models. Those models store many parameters but use only a few billion for each token, and that is what an older server CPU can keep up with.</p>
-<p>This is a separate install from the web app. It is written for the <strong>current</strong> HP: Ubuntu Server 26.04.1, models on <code>/srv/models</code>, one Xeon E5-2620. Nothing here has run on the real HP yet. The speed figures below are estimates, not measurements.</p>
+<p>This is a separate install from the web app. It is written for the <strong>current</strong> HP: Ubuntu Server 26.04.1, models on <code>/srv/models</code>, one Xeon E5-2620. It was first deployed from this branch on 2026-10-21 with the <code>Cyber-Tiel-Coder-35B-A3B</code> option.</p>
 <h2 id="what-you-get">What you get</h2>
 <table>
 <thead>
@@ -85,7 +85,7 @@
 </tbody>
 </table>
 <p>The 18 GiB cap leaves about 8 GiB for Ubuntu, Samba and the always-on services stack, which budgets about 6 GiB. Both models use the same chat format and tool-calling support, so clients do not change when you upgrade.</p>
-<p>Expected speed on one E5-2620 with four channels of DDR3: a few tokens a second for <code>gpt-oss-20b</code>, and slower for <code>gpt-oss-120b</code>. Prompt reading is slower than on a GPU, so very long prompts take a while. Measure on the real machine before you rely on these numbers.</p>
+<p>Measured on the HP on 2026-10-21 with <code>Cyber-Tiel-Coder-35B-A3B-UD-IQ3_XXS</code>: <strong>5.2 tokens a second</strong> generating, <strong>12.6 tokens a second</strong> reading the prompt, and 14.3 GB resident. Prompt reading is far slower than on a GPU, so a long prompt takes minutes. <code>gpt-oss-20b</code> should be similar, and <code>gpt-oss-120b</code> slower; neither has been measured yet.</p>
 <h2 id="settings-that-matter">Settings that matter</h2>
 <ul>
 <li><strong>Threads:</strong> <code>LLAMA_ARG_THREADS=6</code> and <code>HOMELAB_LLAMA_THREADS_BATCH=6</code>, one per physical core. Generation waits on memory, so hyper-threads rarely help. You can try <code>12</code> for batch threads and compare prompt speed in the log.</li>
@@ -149,7 +149,7 @@
   sudo tailscale serve --bg --https=443 http://127.0.0.1:10000</code></p>
 <p>The base URL is then <code>https://HP_TAILNET_NAME.YOUR_TAILNET.ts.net/v1</code>. <code>tailscale serve status</code> shows it, and <code>sudo tailscale serve --https=443 off</code> removes it.</p>
 <p>Do not use Tailscale <strong>Funnel</strong> for this. Funnel publishes the server to the whole internet.</p>
-<p>To stop LAN or tailnet devices you do not trust from reaching the port at all, restrict it with a firewall. For example, with <code>ufw</code>, allow <code>10000/tcp</code> only from <code>192.168.1.0/24</code> and on <code>tailscale0</code>. Allow SSH before you enable <code>ufw</code>.</p>
+<p><code>ufw</code> is active on the HP and allows only listed ports. <code>install</code> opens port 10000 to the HP's LAN subnet (<code>192.168.1.0/24</code>), and on <code>tailscale0</code> when Tailscale is installed. It never opens the port to everything. If you install Tailscale later, run <code>install</code> again, or add the rule yourself: <code>sudo ufw allow in on tailscale0 to any port 10000 proto tcp</code>. <code>plan</code> shows the rules it would add, and <code>verify</code> fails while the port is still blocked.</p>
 <h2 id="everyday-commands">Everyday commands</h2>
 <table>
 <thead>
@@ -225,6 +225,11 @@
 <td><code>/health</code> stays <code>503</code> for many minutes</td>
 <td>The first read from the array is slow, or the page cache is being evicted.</td>
 <td>Check <code>free -g</code> and the log. The watchdog restarts the service after 15 minutes.</td>
+</tr>
+<tr>
+<td>A PC times out reaching port 10000, but it works on the HP</td>
+<td><code>ufw</code> is blocking the port.</td>
+<td>Run <code>install</code> again, or run <code>sudo ufw allow from 192.168.1.0/24 to any port 10000 proto tcp</code>.</td>
 </tr>
 <tr>
 <td><code>401</code> from a client</td>

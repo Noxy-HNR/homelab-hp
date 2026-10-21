@@ -2,7 +2,7 @@
 
 The HP can serve a language model over an OpenAI-compatible API with llama.cpp's `llama-server`. It runs on the CPU only, so it suits Mixture-of-Experts (MoE) models. Those models store many parameters but use only a few billion for each token, and that is what an older server CPU can keep up with.
 
-This is a separate install from the web app. It is written for the **current** HP: Ubuntu Server 26.04.1, models on `/srv/models`, one Xeon E5-2620. Nothing here has run on the real HP yet. The speed figures below are estimates, not measurements.
+This is a separate install from the web app. It is written for the **current** HP: Ubuntu Server 26.04.1, models on `/srv/models`, one Xeon E5-2620. It was first deployed from this branch on 2026-10-21 with the `Cyber-Tiel-Coder-35B-A3B` option.
 
 ## What you get
 
@@ -30,7 +30,7 @@ The HP has **28 GB of RAM today**, and Ubuntu sees about 26 GiB. Generation spee
 
 The 18 GiB cap leaves about 8 GiB for Ubuntu, Samba and the always-on services stack, which budgets about 6 GiB. Both models use the same chat format and tool-calling support, so clients do not change when you upgrade.
 
-Expected speed on one E5-2620 with four channels of DDR3: a few tokens a second for `gpt-oss-20b`, and slower for `gpt-oss-120b`. Prompt reading is slower than on a GPU, so very long prompts take a while. Measure on the real machine before you rely on these numbers.
+Measured on the HP on 2026-10-21 with `Cyber-Tiel-Coder-35B-A3B-UD-IQ3_XXS`: **5.2 tokens a second** generating, **12.6 tokens a second** reading the prompt, and 14.3 GB resident. Prompt reading is far slower than on a GPU, so a long prompt takes minutes. `gpt-oss-20b` should be similar, and `gpt-oss-120b` slower; neither has been measured yet.
 
 ## Settings that matter
 
@@ -118,7 +118,7 @@ The service listens on every interface, including `tailscale0`, and always needs
 
 Do not use Tailscale **Funnel** for this. Funnel publishes the server to the whole internet.
 
-To stop LAN or tailnet devices you do not trust from reaching the port at all, restrict it with a firewall. For example, with `ufw`, allow `10000/tcp` only from `192.168.1.0/24` and on `tailscale0`. Allow SSH before you enable `ufw`.
+`ufw` is active on the HP and allows only listed ports. `install` opens port 10000 to the HP's LAN subnet (`192.168.1.0/24`), and on `tailscale0` when Tailscale is installed. It never opens the port to everything. If you install Tailscale later, run `install` again, or add the rule yourself: `sudo ufw allow in on tailscale0 to any port 10000 proto tcp`. `plan` shows the rules it would add, and `verify` fails while the port is still blocked.
 
 ## Everyday commands
 
@@ -141,6 +141,7 @@ To stop LAN or tailnet devices you do not trust from reaching the port at all, r
 | `The llama account cannot read ...` | The model folder belongs to `lab` only. | Run the `setfacl` lines the installer prints. |
 | `... larger than HOMELAB_LLAMA_MEMORY_MAX` | The model does not fit the limit. | Use the default model, or raise the limit after the RAM upgrade. |
 | `/health` stays `503` for many minutes | The first read from the array is slow, or the page cache is being evicted. | Check `free -g` and the log. The watchdog restarts the service after 15 minutes. |
+| A PC times out reaching port 10000, but it works on the HP | `ufw` is blocking the port. | Run `install` again, or run `sudo ufw allow from 192.168.1.0/24 to any port 10000 proto tcp`. |
 | `401` from a client | Missing or wrong key. | Send `Authorization: Bearer KEY` with the key from `/etc/homelab/llama-server/api-keys`. |
 
 ## Tests
