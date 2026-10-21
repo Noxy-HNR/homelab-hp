@@ -56,14 +56,16 @@
 <td>It runs on the PC's Intel iGPU and NPU.</td>
 </tr>
 <tr>
-<td>HP landing page (<code>hp/dashboard</code>)</td>
+<td>Homelab app (<code>services/homelab</code>)</td>
 <td>8088 on the HP</td>
-<td>Already HP-native</td>
-<td>It is a systemd service in this repository, not yet confirmed installed, and is not changed here.</td>
+<td>Already running on the HP</td>
+<td>A live check on 2026-10-21 found it as a systemd service from <code>/opt/homelab/apps</code>. This stack leaves it alone.</td>
 </tr>
 </tbody>
 </table>
 <p>The <strong>retrieval proxy</strong> is not in either repository. It lives only on the PC as <code>C:\AI\rag\rag_proxy.py</code> (started by <code>C:\AI\rag\start-rag.ps1</code>) and listens on <code>127.0.0.1:8090</code> in front of a llama-server on port 8080. It <strong>stays on the PC for now</strong>. Every request it handles goes to that GPU model, so moving it alone would add a network round trip and still need the PC on. Move it together with its model once a model runs on the HP, after its source is committed to ai-workspace so it can be built here like Relay Station. Port 8090 does not clash with anything in this stack.</p>
+<h2 id="ports">Ports</h2>
+<p>A live check on 2026-10-21 found ports 22 (SSH), 139 and 445 (Samba) and 8088 (homelab app) in use on the HP. This stack does not use any of them. It adds 9095 (loopback only), and with Frigate also 5000 (loopback only), 8971, 8554 and 8555 on <code>HP_LAN_IP</code>.</p>
 <h2 id="resource-budget-at-28-gb">Resource budget at 28 GB</h2>
 <table>
 <thead>
@@ -149,6 +151,7 @@ sudo docker compose logs frigate | grep -i password
 </code></pre>
 <p><strong>Step 4.</strong> Open <code>https://192.168.1.241:8971</code> (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.</p>
 <p>Every later <code>docker compose</code> command needs <code>--profile nvr</code> to include Frigate.</p>
+<p>The E5-2620 has AVX but not AVX2. Frigate's CPU object detector works without AVX2, but it is slow, which is why the template keeps detection at 5 fps on a sub stream. Leave Frigate's optional semantic search, face recognition and licence-plate features off on this CPU. If the container restarts in a loop, look for <code>Illegal instruction</code> in <code>sudo docker compose logs frigate</code>. That means a component needs a newer instruction set, so stay on the pinned version and report it instead of upgrading blind.</p>
 <h2 id="5-verify">5. Verify</h2>
 <ul>
 <li><code>sudo docker compose --profile nvr ps</code> shows every service <code>(healthy)</code>.</li>

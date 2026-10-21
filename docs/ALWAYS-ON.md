@@ -17,9 +17,13 @@ This inventory comes from [Noxy-HNR/ai-workspace](https://github.com/Noxy-HNR/ai
 | Request-logging proxy (`llama-proxy.py`) | 10001 | Stays on the PC | It is a debugging aid with the PC's llama-server address and `C:\AI\logs` path built in. Moving it would add a network hop to every request. |
 | cptr | 8000 | Stays on the PC | Its tools are Windows filesystem, command and browser automation on the PC itself. |
 | On-device inference (`Tools/npu-services`) | 8788 | Stays on the PC | It runs on the PC's Intel iGPU and NPU. |
-| HP landing page (`hp/dashboard`) | 8088 on the HP | Already HP-native | It is a systemd service in this repository, not yet confirmed installed, and is not changed here. |
+| Homelab app (`services/homelab`) | 8088 on the HP | Already running on the HP | A live check on 2026-10-21 found it as a systemd service from `/opt/homelab/apps`. This stack leaves it alone. |
 
 The **retrieval proxy** is not in either repository. It lives only on the PC as `C:\AI\rag\rag_proxy.py` (started by `C:\AI\rag\start-rag.ps1`) and listens on `127.0.0.1:8090` in front of a llama-server on port 8080. It **stays on the PC for now**. Every request it handles goes to that GPU model, so moving it alone would add a network round trip and still need the PC on. Move it together with its model once a model runs on the HP, after its source is committed to ai-workspace so it can be built here like Relay Station. Port 8090 does not clash with anything in this stack.
+
+## Ports
+
+A live check on 2026-10-21 found ports 22 (SSH), 139 and 445 (Samba) and 8088 (homelab app) in use on the HP. This stack does not use any of them. It adds 9095 (loopback only), and with Frigate also 5000 (loopback only), 8971, 8554 and 8555 on `HP_LAN_IP`.
 
 ## Resource budget at 28 GB
 
@@ -120,6 +124,8 @@ sudo docker compose logs frigate | grep -i password
 **Step 4.** Open `https://192.168.1.241:8971` (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.
 
 Every later `docker compose` command needs `--profile nvr` to include Frigate.
+
+The E5-2620 has AVX but not AVX2. Frigate's CPU object detector works without AVX2, but it is slow, which is why the template keeps detection at 5 fps on a sub stream. Leave Frigate's optional semantic search, face recognition and licence-plate features off on this CPU. If the container restarts in a loop, look for `Illegal instruction` in `sudo docker compose logs frigate`. That means a component needs a newer instruction set, so stay on the pinned version and report it instead of upgrading blind.
 
 ## 5. Verify
 
