@@ -34,6 +34,7 @@ Clone the public repository listed in the table above into a directory named `ho
 | Use the system every day | [Daily use](docs/DAILY-USE.md) |
 | Set up or fix the HP | [HP page](docs/setup/HP.md) |
 | Check the HP's current deployed layout | [HP current state](docs/HP-CURRENT-STATE.md) |
+| Move always-on services (Telegram bot, Frigate) onto the HP | [Always-on services](docs/ALWAYS-ON.md) |
 | Set up or fix the Dell | [Dell page](docs/setup/DELL.md) |
 | Set up or fix a Windows PC | [Windows page](docs/setup/WINDOWS.md) |
 | Switch the Steam drive between PCs | [Game drive guide](docs/GAME-DRIVE.md) |
