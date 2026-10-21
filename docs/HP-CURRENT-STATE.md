@@ -37,6 +37,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 - Confirm the two mapped drives reconnect after a future planned reboot.
 - Finish remaining Ubuntu updates at a convenient time, then verify installed firmware versions before choosing any update.
 - Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.
+- The CPU model server (`llama-server`, [CPU model server](features/LLM.md)) is written for this layout but is not installed. It needs its model copied to `/srv/models` first; the default `gpt-oss-20b` is sized for today's RAM.
 - The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.
 
 ## Installer compatibility

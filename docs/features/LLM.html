@@ -1,0 +1,229 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CPU model server (HP) · Homelab</title><link rel="stylesheet" href="../assets/guide.css"></head><body><aside><strong>Homelab</strong><p>Your setup guide.<br>One machine at a time.</p><a href="../guide.html">Start here</a><a href="../INSTALL.html">1 · Hardware & Ubuntu</a><a href="../setup/HP.html">2 · HP NAS</a><a href="../HP-CURRENT-STATE.html">HP current state</a><a href="../setup/DELL.html">3 · Dell workbench</a><a href="../setup/WINDOWS.html">4 · Windows PCs</a><a href="../GAME-DRIVE.html">5 · Steam drive</a><a href="../DAILY-USE.html">Use your homelab</a><a href="../PARTS.html">Parts to buy</a><a href="../VALIDATION.html">What is tested</a></aside><main><div class="topbar"><span>INSTALL · USE · RECOVER</span><button id="print">Print this page</button></div><h1 id="cpu-model-server-hp">CPU model server (HP)</h1>
+<p>The HP can serve a language model over an OpenAI-compatible API with llama.cpp's <code>llama-server</code>. It runs on the CPU only, so it suits Mixture-of-Experts (MoE) models. Those models store many parameters but use only a few billion for each token, and that is what an older server CPU can keep up with.</p>
+<p>This is a separate install from the web app. It is written for the <strong>current</strong> HP: Ubuntu Server 26.04.1, models on <code>/srv/models</code>, one Xeon E5-2620. Nothing here has run on the real HP yet. The speed figures below are estimates, not measurements.</p>
+<h2 id="what-you-get">What you get</h2>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Service</td>
+<td><code>llama-server.service</code>, run by the unprivileged <code>llama</code> account</td>
+</tr>
+<tr>
+<td>API</td>
+<td><code>http://HP_IP:10000/v1</code> (OpenAI-compatible: <code>/v1/chat/completions</code>, <code>/v1/completions</code>, <code>/v1/models</code>)</td>
+</tr>
+<tr>
+<td>Browser chat</td>
+<td><code>http://HP_IP:10000/</code> (llama.cpp's built-in page; it asks for the API key)</td>
+</tr>
+<tr>
+<td>Health</td>
+<td><code>http://HP_IP:10000/health</code>: <code>200</code> ready, <code>503</code> still loading. No key needed.</td>
+</tr>
+<tr>
+<td>Metrics</td>
+<td><code>http://HP_IP:10000/metrics</code> (Prometheus format, needs the key)</td>
+</tr>
+<tr>
+<td>API key</td>
+<td><code>/etc/homelab/llama-server/api-keys</code>. Every request except <code>/health</code> needs it.</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td><code>/etc/homelab/llama-server.env</code>, created from <a href="../../hp/llm/llama-server.env.example"><code>hp/llm/llama-server.env.example</code></a></td>
+</tr>
+<tr>
+<td>Watchdog</td>
+<td><code>llama-server-health.timer</code> checks <code>/health</code> every two minutes. If the service has been up for 15 minutes and is still not ready, it restarts it.</td>
+</tr>
+<tr>
+<td>llama.cpp</td>
+<td>Release <code>v0.7.0</code>, pinned to commit <code>620d2225</code>. It is built on the HP for its own CPU.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="model-choice">Model choice</h2>
+<p>The HP has <strong>28 GB of RAM today</strong>, and Ubuntu sees about 26 GiB. Generation speed on this CPU depends on memory bandwidth, not core count. A model whose active parameters are small is fast, even when its total size is large.</p>
+<table>
+<thead>
+<tr>
+<th>When</th>
+<th>Model</th>
+<th style="text-align: right;">Size on disk</th>
+<th style="text-align: right;">Active per token</th>
+<th style="text-align: right;">Memory limit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Now (default)</strong></td>
+<td><code>gpt-oss-20b</code>, MXFP4 (<a href="https://huggingface.co/ggml-org/gpt-oss-20b-GGUF">ggml-org/gpt-oss-20b-GGUF</a>, file <code>gpt-oss-20b-mxfp4.gguf</code>)</td>
+<td style="text-align: right;">about 13 GB</td>
+<td style="text-align: right;">3.6B</td>
+<td style="text-align: right;">18 GiB hard cap</td>
+</tr>
+<tr>
+<td><strong>After the 96 GB upgrade</strong></td>
+<td><code>gpt-oss-120b</code>, MXFP4 (<a href="https://huggingface.co/ggml-org/gpt-oss-120b-GGUF">ggml-org/gpt-oss-120b-GGUF</a>, three <code>gpt-oss-120b-mxfp4-0000N-of-00003.gguf</code> parts)</td>
+<td style="text-align: right;">about 63 GB</td>
+<td style="text-align: right;">5.1B</td>
+<td style="text-align: right;">80 GiB hard cap</td>
+</tr>
+</tbody>
+</table>
+<p>The 18 GiB cap leaves about 8 GiB for Ubuntu, Samba and the always-on services stack, which budgets about 6 GiB. Both models use the same chat format and tool-calling support, so clients do not change when you upgrade.</p>
+<p>Expected speed on one E5-2620 with four channels of DDR3: a few tokens a second for <code>gpt-oss-20b</code>, and slower for <code>gpt-oss-120b</code>. Prompt reading is slower than on a GPU, so very long prompts take a while. Measure on the real machine before you rely on these numbers.</p>
+<h2 id="settings-that-matter">Settings that matter</h2>
+<ul>
+<li><strong>Threads:</strong> <code>LLAMA_ARG_THREADS=6</code> and <code>HOMELAB_LLAMA_THREADS_BATCH=6</code>, one per physical core. Generation waits on memory, so hyper-threads rarely help. You can try <code>12</code> for batch threads and compare prompt speed in the log.</li>
+<li><strong>NUMA:</strong> none today; the HP has one CPU, so it has one NUMA node. If you fit a second CPU with the RAM upgrade, set <code>LLAMA_ARG_NUMA=distribute</code> and drop the page cache once before the first start. <code>plan</code> prints the node count and reminds you.</li>
+<li><strong>mmap from the array:</strong> <code>LLAMA_ARG_LOAD_MODE=mmap</code> maps the GGUF straight from <code>/srv/models</code> on the RAID0 array. The weights live in the page cache. A service restart then reloads from RAM, not disk, and under memory pressure the kernel can drop cold pages instead of killing the process. The first load reads the whole file from the array. That takes about a minute for <code>gpt-oss-20b</code> and several minutes for <code>gpt-oss-120b</code>.</li>
+<li><strong>Memory limits:</strong> <code>HOMELAB_LLAMA_MEMORY_HIGH</code> and <code>HOMELAB_LLAMA_MEMORY_MAX</code> become systemd <code>MemoryHigh</code> and <code>MemoryMax</code>. Above HIGH the kernel reclaims the service's pages. Answers slow down, but the service does not crash. Swap is off for the service. The installer refuses a MAX above 90% of RAM or below the model size plus 10%.</li>
+<li><strong>Context:</strong> 32,768 tokens with one request at a time (<code>LLAMA_ARG_N_PARALLEL=1</code>). The prompt cache is held to 1 GiB (<code>LLAMA_ARG_CACHE_RAM=1024</code>).</li>
+<li><strong>Priority:</strong> the service runs with <code>Nice=5</code> and lower CPU and I/O weight. Samba and the Steam downloads keep priority.</li>
+</ul>
+<h2 id="install">Install</h2>
+<p>On the HP, from your clone of this repo:</p>
+<ol>
+<li><strong>Look first.</strong> This changes nothing:</li>
+</ol>
+<p><code>bash
+   sudo bash hp/llm/install-llama-server.sh plan</code></p>
+<p><strong>You should see:</strong> the CPU line (<code>6 physical cores, 1 NUMA node(s)</code>), the RAM, and either the model's size or <code>Model not found yet</code>.</p>
+<ol start="2">
+<li><strong>Put the model in place.</strong> The installer never downloads models. The simplest way is from the Windows PC: download <code>gpt-oss-20b-mxfp4.gguf</code> from the Hugging Face page above and copy it to <code>M:\gpt-oss-20b\</code>. <code>M:</code> is the <code>ModelFiles</code> share at <code>/srv/models</code>. To download on the HP instead, run it as the account that owns <code>/srv/models</code> (shown here as <code>lab</code>). It needs the Hugging Face <code>hf</code> tool (<code>pipx install 'huggingface_hub[cli]'</code>):</li>
+</ol>
+<p><code>bash
+   sudo -u lab mkdir -p /srv/models/gpt-oss-20b
+   sudo -u lab hf download ggml-org/gpt-oss-20b-GGUF gpt-oss-20b-mxfp4.gguf --local-dir /srv/models/gpt-oss-20b</code></p>
+<ol start="3">
+<li><strong>Install.</strong> This builds llama.cpp, which takes 10 to 20 minutes on this CPU. It creates the <code>llama</code> account, the settings file and an API key, then starts the service if the model is present:</li>
+</ol>
+<p><code>bash
+   sudo bash hp/llm/install-llama-server.sh install</code></p>
+<p>If it says <code>The llama account cannot read ...</code>, run the <code>setfacl</code> command it prints, then run the install again.</p>
+<ol start="4">
+<li><strong>Verify</strong> after the model has loaded:</li>
+</ol>
+<p><code>bash
+   sudo bash hp/llm/install-llama-server.sh verify</code></p>
+<p><strong>You should see:</strong> <code>PASS: llama-server is ready on port 10000</code>, <code>PASS: /v1/models lists gpt-oss-20b</code>, then <code>PASS: llama-server, health check and API</code>.</p>
+<ol start="5">
+<li><strong>Get the API key</strong> and keep it with your other homelab secrets:</li>
+</ol>
+<p><code>bash
+   sudo cat /etc/homelab/llama-server/api-keys</code></p>
+<p>Re-running <code>install</code> is safe. It keeps your settings file and key, reuses the build, and rewrites only the unit files and memory limits.</p>
+<h2 id="upgrade-to-the-larger-model">Upgrade to the larger model</h2>
+<p>After the RAM upgrade, check that Ubuntu sees it (<code>free -g</code>). Copy the three <code>gpt-oss-120b</code> parts into <code>/srv/models/gpt-oss-120b/</code>. Then, in <code>/etc/homelab/llama-server.env</code>, replace the model, alias, context and memory lines with the commented <strong>After the 96 GB upgrade</strong> block and run <code>install</code> again. It applies the new memory limits and restarts the service.</p>
+<h2 id="use-it-from-the-pcs">Use it from the PCs</h2>
+<p>Clients need three things: the base URL <code>http://192.168.1.241:10000/v1</code> (use the HP's current address), the API key, and the model name <code>gpt-oss-20b</code> (or leave the model blank where a client allows it). Test it from a PC:</p>
+<pre><code class="language-powershell">curl.exe -H &quot;Authorization: Bearer KEY&quot; http://192.168.1.241:10000/v1/models
+</code></pre>
+<h3 id="from-the-ai-workspace-dashboard">From the ai-workspace dashboard</h3>
+<p>The <a href="https://github.com/Noxy-HNR/ai-workspace">ai-workspace</a> dashboard on port 9090 talks only to the PC's <strong>own</strong> llama-server at <code>127.0.0.1:10000</code>. It has no setting for a remote server yet, so the HP does not appear in its Services or Chat tabs. What works today:</p>
+<ul>
+<li><strong>Relay Station (Telegram bot):</strong> in its console at <code>http://127.0.0.1:9095</code>, open Settings, then LLM. Set <em>LLM base URL</em> to <code>http://192.168.1.241:10000/v1</code>, turn on <em>Allow remote model endpoint</em>, and paste the key into <em>API key</em>.</li>
+<li><strong>OpenCode, scripts and other OpenAI clients:</strong> use the base URL and key above.</li>
+<li><strong>Chat in a browser:</strong> open <code>http://192.168.1.241:10000/</code> and enter the key.</li>
+</ul>
+<p>The server allows browser calls from pages served on a PC's loopback address (<code>LLAMA_ARG_CORS_ORIGINS=localhost</code>), so a dashboard page at <code>http://127.0.0.1:9090</code> can call the HP once it has an endpoint setting. Those calls still need the key. Adding that setting to the dashboard is a separate change in ai-workspace.</p>
+<h3 id="over-tailscale">Over Tailscale</h3>
+<p>The service listens on every interface, including <code>tailscale0</code>, and always needs the key. After you install Tailscale on the HP and sign it in to your tailnet, you can use either address:</p>
+<ul>
+<li><strong>Direct:</strong> <code>http://HP_TAILNET_NAME:10000/v1</code>, using the HP's MagicDNS name or its <code>100.x.y.z</code> address.</li>
+<li><strong>HTTPS through Tailscale Serve</strong> (recommended away from home, because the key then never crosses a network in plain text):</li>
+</ul>
+<p><code>bash
+  sudo tailscale serve --bg --https=443 http://127.0.0.1:10000</code></p>
+<p>The base URL is then <code>https://HP_TAILNET_NAME.YOUR_TAILNET.ts.net/v1</code>. <code>tailscale serve status</code> shows it, and <code>sudo tailscale serve --https=443 off</code> removes it.</p>
+<p>Do not use Tailscale <strong>Funnel</strong> for this. Funnel publishes the server to the whole internet.</p>
+<p>To stop LAN or tailnet devices you do not trust from reaching the port at all, restrict it with a firewall. For example, with <code>ufw</code>, allow <code>10000/tcp</code> only from <code>192.168.1.0/24</code> and on <code>tailscale0</code>. Allow SSH before you enable <code>ufw</code>.</p>
+<h2 id="everyday-commands">Everyday commands</h2>
+<table>
+<thead>
+<tr>
+<th>I want to...</th>
+<th>Run on the HP</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>See if it is ready</td>
+<td><code>bash hp/llm/llama-health.sh</code></td>
+</tr>
+<tr>
+<td>Read the log</td>
+<td><code>sudo journalctl -u llama-server -n 80 --no-pager</code></td>
+</tr>
+<tr>
+<td>Restart after editing settings</td>
+<td><code>sudo systemctl restart llama-server</code> (memory-limit changes need <code>install</code> again)</td>
+</tr>
+<tr>
+<td>Stop it to free RAM</td>
+<td><code>sudo systemctl stop llama-server</code> (it starts again at boot; add <code>disable</code> to stop that)</td>
+</tr>
+<tr>
+<td>Check memory use</td>
+<td><code>systemctl status llama-server</code> (the <code>Memory:</code> line)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="if-something-goes-wrong">If something goes wrong</h2>
+<table>
+<thead>
+<tr>
+<th>You see</th>
+<th>What it means</th>
+<th>What to do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Ubuntu 26.04 is required</code></td>
+<td>This is not the current HP install.</td>
+<td>Run it on the HP.</td>
+</tr>
+<tr>
+<td><code>/srv/models is not mounted</code></td>
+<td>The models volume is missing.</td>
+<td>Fix the mount first; see <a href="../HP-CURRENT-STATE.html">HP current state</a>.</td>
+</tr>
+<tr>
+<td><code>Model not found yet</code></td>
+<td>The GGUF is not at <code>LLAMA_ARG_MODEL</code>.</td>
+<td>Copy it there, or fix the path in the settings file.</td>
+</tr>
+<tr>
+<td><code>The llama account cannot read ...</code></td>
+<td>The model folder belongs to <code>lab</code> only.</td>
+<td>Run the <code>setfacl</code> command the installer prints.</td>
+</tr>
+<tr>
+<td><code>... larger than HOMELAB_LLAMA_MEMORY_MAX</code></td>
+<td>The model does not fit the limit.</td>
+<td>Use the default model, or raise the limit after the RAM upgrade.</td>
+</tr>
+<tr>
+<td><code>/health</code> stays <code>503</code> for many minutes</td>
+<td>The first read from the array is slow, or the page cache is being evicted.</td>
+<td>Check <code>free -g</code> and the log. The watchdog restarts the service after 15 minutes.</td>
+</tr>
+<tr>
+<td><code>401</code> from a client</td>
+<td>Missing or wrong key.</td>
+<td>Send <code>Authorization: Bearer KEY</code> with the key from <code>/etc/homelab/llama-server/api-keys</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="tests">Tests</h2>
+<pre><code class="language-bash">python3 hp/llm/test_llama_config.py
+</code></pre>
+<p>These offline tests check that the settings use only names llama.cpp v0.7.0 reads, that the default fits beside the other services in today's 26 GiB, that the upgrade profile fits 96 GB, and the health script's ready, loading and down results. They build nothing and download nothing. Before this page was written, the pinned llama.cpp was also built in a scratch Linux container and started with these exact settings against a tiny generated test model. <code>/health</code>, the API key check, <code>/v1/models</code>, chat completions, <code>/metrics</code> and the CORS rule all behaved as described here. No real model was run.</p><footer>Built from the Markdown guide in Noxy-HNR/homelab-stack. Example screenshots use local test data; the physical server checks happen during setup.</footer></main><script src="../assets/guide.js"></script></body></html>

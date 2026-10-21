@@ -1,0 +1,10 @@
+[Unit]
+Description=Check llama-server health every two minutes
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=2min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

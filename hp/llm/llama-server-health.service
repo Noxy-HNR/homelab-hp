@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart llama-server if it stops answering /health
+After=llama-server.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/llama-health.sh --watchdog

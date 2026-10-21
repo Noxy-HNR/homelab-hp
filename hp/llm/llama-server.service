@@ -1,0 +1,38 @@
+[Unit]
+Description=llama.cpp OpenAI-compatible server (CPU MoE inference)
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/srv/models
+ConditionPathExists=/etc/homelab/llama-server.env
+
+[Service]
+Type=simple
+User=llama
+Group=llama
+EnvironmentFile=/etc/homelab/llama-server.env
+Environment=HOME=/var/lib/llama-server
+ExecStart=/opt/llama.cpp/current/bin/llama-server --threads-batch ${HOMELAB_LLAMA_THREADS_BATCH} --api-key-file /etc/homelab/llama-server/api-keys
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+StateDirectory=llama-server
+WorkingDirectory=/var/lib/llama-server
+# Inference may take every core. Samba and the other services keep priority.
+CPUWeight=50
+IOWeight=50
+Nice=5
+# Memory limits are written by the installer to llama-server.service.d/memory.conf.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadOnlyPaths=/srv/models
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

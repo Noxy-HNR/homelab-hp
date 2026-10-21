@@ -10,6 +10,7 @@ The goal is local AI on the laptop and desktop, a shared model library, a direct
 - **Software (verified so far):** OpenSSH is enabled, Samba is active, and Steam game downloads are in progress on the Steam storage. The model files were copied to the models storage. The app dashboard, Cockpit, Restic backup plans, and the managed iSCSI handoff controller are not confirmed as installed.
 - **Next steps:** finish validating the Samba share names/access from the client, complete OS updates when convenient, and later install the 10 GbE hardware before attempting any multi-link configuration. Firmware versions for iLO and P420i still need confirmation.
 - **Network services:** SSH and Samba are active. Samba exposes `SteamGames` (`/srv/steam`) and `ModelFiles` (`/srv/models`) to the `lab` account. The Steam downloads are in progress and the model library is stored on the server. No multi-link network setup is active.
+- **CPU model server (optional, not yet installed):** `hp/llm/install-llama-server.sh` builds a pinned llama.cpp and runs `llama-server` as a systemd service on port 10000, with an OpenAI-compatible API, an API key, a `/health` watchdog and an 18 GiB memory cap. The default model is the `gpt-oss-20b` MoE, mapped from `/srv/models`; `gpt-oss-120b` is the profile for after the 96 GB RAM upgrade. See [CPU model server](features/LLM.md).
 - **Current-use detail:** this Windows PC maps `S:` to `SteamGames` and `M:` to `ModelFiles`; see [HP current state](HP-CURRENT-STATE.md).
 
 ## Dell R710 — turn on for development
