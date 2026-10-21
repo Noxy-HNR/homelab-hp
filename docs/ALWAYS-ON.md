@@ -19,7 +19,7 @@ This inventory comes from [Noxy-HNR/ai-workspace](https://github.com/Noxy-HNR/ai
 | On-device inference (`Tools/npu-services`) | 8788 | Stays on the PC | It runs on the PC's Intel iGPU and NPU. |
 | HP landing page (`hp/dashboard`) | 8088 on the HP | Already HP-native | It is a systemd service in this repository, not yet confirmed installed, and is not changed here. |
 
-A "retrieval proxy" was mentioned in planning, but no such service exists in either repository. If it lives only in `C:\AI` on the PC, add it to this table before moving it.
+The **retrieval proxy** is not in either repository. It lives only on the PC as `C:\AI\rag\rag_proxy.py` (started by `C:\AI\rag\start-rag.ps1`) and listens on `127.0.0.1:8090` in front of a llama-server on port 8080. It **stays on the PC for now**. Every request it handles goes to that GPU model, so moving it alone would add a network round trip and still need the PC on. Move it together with its model once a model runs on the HP, after its source is committed to ai-workspace so it can be built here like Relay Station. Port 8090 does not clash with anything in this stack.
 
 ## Resource budget at 28 GB
 
