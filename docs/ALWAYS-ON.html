@@ -1,0 +1,188 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Always-on services on the HP · Homelab</title><link rel="stylesheet" href="assets/guide.css"></head><body><aside><strong>Homelab</strong><p>Your setup guide.<br>One machine at a time.</p><a href="guide.html">Start here</a><a href="INSTALL.html">1 · Hardware & Ubuntu</a><a href="setup/HP.html">2 · HP NAS</a><a href="HP-CURRENT-STATE.html">HP current state</a><a href="setup/DELL.html">3 · Dell workbench</a><a href="setup/WINDOWS.html">4 · Windows PCs</a><a href="GAME-DRIVE.html">5 · Steam drive</a><a href="DAILY-USE.html">Use your homelab</a><a href="PARTS.html">Parts to buy</a><a href="VALIDATION.html">What is tested</a></aside><main><div class="topbar"><span>INSTALL · USE · RECOVER</span><button id="print">Print this page</button></div><h1 id="always-on-services-on-the-hp">Always-on services on the HP</h1>
+<p>This page moves the services that should run all day off the Windows PC and onto the HP, using the Docker Compose stack in <a href="../hp/always-on/compose.yaml"><code>hp/always-on</code></a>. It is written for the HP as it is installed today: Ubuntu 26.04.1, <strong>28 GB of RAM</strong> (about 26 GiB visible to Ubuntu), one Xeon E5-2620, no GPU, and one RAID0 logical drive. See <a href="HP-CURRENT-STATE.html">HP current state</a>.</p>
+<p>Nothing here creates arrays, partitions, filesystems or logical volumes.</p>
+<h2 id="what-moves-and-what-stays">What moves and what stays</h2>
+<p>This inventory comes from <a href="https://github.com/Noxy-HNR/ai-workspace">Noxy-HNR/ai-workspace</a> on <code>main</code> (2026-10-21).</p>
+<table>
+<thead>
+<tr>
+<th>PC service</th>
+<th>Port on the PC</th>
+<th>Decision</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Relay Station</strong> (Telegram bot, <code>TelegramBot/</code>)</td>
+<td>9095</td>
+<td><strong>Moves to the HP</strong></td>
+<td>A long-polling bot only answers while its host is on. It is Python standard library only and needs about 100 MB of RAM.</td>
+</tr>
+<tr>
+<td><strong>Frigate</strong> (camera recordings)</td>
+<td>none yet</td>
+<td><strong>New on the HP, opt-in</strong></td>
+<td>No Frigate config exists in either repository. The stack includes a disabled template so recordings start on the always-on machine, not the PC.</td>
+</tr>
+<tr>
+<td>Local AI dashboard (<code>dashboard-server.ps1</code>)</td>
+<td>9090</td>
+<td>Stays on the PC</td>
+<td>It starts and stops the PC's own <code>llama-server.exe</code> and edits <code>C:\AI\Config\models.json</code>. It has nothing to manage on the HP.</td>
+</tr>
+<tr>
+<td>llama-server (CUDA)</td>
+<td>10000</td>
+<td>Stays on the PC</td>
+<td>It needs the PC's GPU. A CPU llama-server on the HP is a separate piece of work.</td>
+</tr>
+<tr>
+<td>Request-logging proxy (<code>llama-proxy.py</code>)</td>
+<td>10001</td>
+<td>Stays on the PC</td>
+<td>It is a debugging aid with the PC's llama-server address and <code>C:\AI\logs</code> path built in. Moving it would add a network hop to every request.</td>
+</tr>
+<tr>
+<td>cptr</td>
+<td>8000</td>
+<td>Stays on the PC</td>
+<td>Its tools are Windows filesystem, command and browser automation on the PC itself.</td>
+</tr>
+<tr>
+<td>On-device inference (<code>Tools/npu-services</code>)</td>
+<td>8788</td>
+<td>Stays on the PC</td>
+<td>It runs on the PC's Intel iGPU and NPU.</td>
+</tr>
+<tr>
+<td>Homelab app (<code>services/homelab</code>)</td>
+<td>8088 on the HP</td>
+<td>Already running on the HP</td>
+<td>A live check on 2026-10-21 found it as a systemd service from <code>/opt/homelab/apps</code>. This stack leaves it alone.</td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>retrieval proxy</strong> is not in either repository. It lives only on the PC as <code>C:\AI\rag\rag_proxy.py</code> (started by <code>C:\AI\rag\start-rag.ps1</code>) and listens on <code>127.0.0.1:8090</code> in front of a llama-server on port 8080. It <strong>stays on the PC for now</strong>. Every request it handles goes to that GPU model, so moving it alone would add a network round trip and still need the PC on. Move it together with its model once a model runs on the HP, after its source is committed to ai-workspace so it can be built here like Relay Station. Port 8090 does not clash with anything in this stack.</p>
+<h2 id="ports">Ports</h2>
+<p>A live check on 2026-10-21 found ports 22 (SSH), 139 and 445 (Samba) and 8088 (homelab app) in use on the HP. This stack does not use any of them. It adds 9095 (loopback only), and with Frigate also 5000 (loopback only), 8971, 8554 and 8555 on <code>HP_LAN_IP</code>.</p>
+<h2 id="resource-budget-at-28-gb">Resource budget at 28 GB</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th style="text-align: right;">Memory limit</th>
+<th style="text-align: right;">CPU limit</th>
+<th>Data</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Relay Station</td>
+<td style="text-align: right;">512 MiB</td>
+<td style="text-align: right;">1 core</td>
+<td><code>/srv/services/relay-station</code> (a few MB)</td>
+</tr>
+<tr>
+<td>Frigate (optional)</td>
+<td style="text-align: right;">4 GiB, plus 256 MB shared memory and a 1 GB tmpfs cache</td>
+<td style="text-align: right;">4 cores</td>
+<td>config in <code>/srv/services/frigate/config</code>, recordings in <code>FRIGATE_MEDIA_DIR</code></td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td style="text-align: right;"><strong>about 6 GiB</strong></td>
+<td style="text-align: right;"></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>That leaves about 20 GiB for Ubuntu, the Samba page cache and a CPU llama-server. When the 96 GB upgrade lands, raise <code>FRIGATE_MEMORY</code> and <code>FRIGATE_CPUS</code> in <code>.env</code> only if Frigate's own stats show it needs more.</p>
+<h2 id="storage">Storage</h2>
+<p>Everything sits on the P420i <strong>RAID0</strong> logical drive. One failed disk loses all of it, so the backup step below is not optional.</p>
+<p>The LVM volume group is fully allocated: <code>/</code> has 100 GiB, <code>/srv/steam</code> 500 GiB and <code>/srv/models</code> 795 GiB. Service state therefore goes to <code>/srv/services</code> on the root volume. That is fine for Relay Station. For Frigate, the template keeps 3 days of motion-only recording, roughly 20 to 40 GiB per camera. If you want longer retention, give recordings their own logical volume and point <code>FRIGATE_MEDIA_DIR</code> at it. Shrinking <code>/srv/models</code> to make room means unmounting it and running <code>resize2fs</code> before <code>lvreduce</code>, so plan it as a separate, backed-up maintenance step.</p>
+<h2 id="1-install-docker-engine">1. Install Docker Engine</h2>
+<p>Docker is not confirmed as installed on the HP. Ubuntu's own packages are the simplest choice on 26.04:</p>
+<pre><code class="language-bash">sudo apt update
+sudo apt install -y docker.io docker-compose-v2 git
+sudo systemctl enable --now docker
+docker compose version
+</code></pre>
+<p>Docker's own repository also works if it lists Ubuntu 26.04 by the time you install. Do not add your login to the <code>docker</code> group unless you accept that it is equivalent to root.</p>
+<h2 id="2-get-the-code-and-settings">2. Get the code and settings</h2>
+<pre><code class="language-bash">sudo git clone https://github.com/Noxy-HNR/ai-workspace /opt/ai-workspace
+cd ~/homelab-stack/hp/always-on        # your clone of this repository
+sudo bash prepare-host.sh install      # first run creates .env (mode 600) and stops
+sudoedit .env                          # check HP_LAN_IP, paths, TZ
+sudo bash prepare-host.sh plan         # read the warnings
+sudo bash prepare-host.sh install      # creates /srv/services/... and the Frigate config copy
+</code></pre>
+<p><code>.env</code> is ignored by Git. It holds camera credentials only. The Telegram bot token is not in <code>.env</code>; it travels inside Relay Station's database in the next step.</p>
+<h2 id="3-move-relay-station">3. Move Relay Station</h2>
+<p>The commands below use the default <code>SERVICES_DATA_ROOT=/srv/services</code> and <code>RELAY_UID</code>/<code>RELAY_GID</code> of 10001. If you changed those in <code>.env</code>, change the paths and the <code>-o</code>/<code>-g</code> numbers in the same way, here and in the backup and rollback sections.</p>
+<p>Only one machine may poll a Telegram bot at a time. A second poller gets <code>409 Conflict</code> from Telegram, and the data-folder lock cannot detect another computer.</p>
+<p><strong>Step 1. On the PC</strong>, stop the bot: use <strong>Stop</strong> on the Relay Station card in the dashboard at <code>http://127.0.0.1:9090</code>, or run <code>powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1</code>. Confirm nothing listens on 9095: <code>Get-NetTCPConnection -LocalPort 9095 -State Listen</code> returns nothing.</p>
+<p><strong>Step 2. Copy the database</strong> from the PC. It holds the token, settings, users and chat history:</p>
+<pre><code class="language-powershell"># HP_LOGIN is your Ubuntu login on the HP. The staging folder is private to that login.
+ssh HP_LOGIN@192.168.1.241 &quot;install -d -m 700 ~/relay-migrate&quot;
+scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:relay-migrate/bot.db
+</code></pre>
+<p><strong>Step 3. On the HP</strong>, put it in place and start the service:</p>
+<pre><code class="language-bash">cd ~/homelab-stack/hp/always-on
+# Each step runs only if the one before it worked, so a failed build moves nothing.
+sudo docker compose build --pull &amp;&amp;
+  sudo install -m 600 -o 10001 -g 10001 ~/relay-migrate/bot.db /srv/services/relay-station/bot.db &amp;&amp;
+  rm -r ~/relay-migrate &amp;&amp;
+  sudo docker compose up -d
+sudo docker compose ps                 # relay-station shows (healthy) within a minute
+</code></pre>
+<p>To start fresh instead, skip the copy and paste the @BotFather token in Settings after step 4.</p>
+<p><strong>Step 4. Open the console</strong> through SSH (replace <code>HP_LOGIN</code> with your Ubuntu login on the HP). The console is loopback-only on the HP by design and has no password of its own:</p>
+<pre><code class="language-powershell">ssh -L 9095:127.0.0.1:9095 HP_LOGIN@192.168.1.241
+</code></pre>
+<p>Then browse to <code>http://127.0.0.1:9095</code> on the PC.</p>
+<p><strong>Step 5. Point it at a model.</strong> The saved LLM URL <code>http://127.0.0.1:10000/v1</code> now means the HP itself. Pick one:
+- A llama-server on the HP: keep the loopback URL with the HP server's port. No remote setting is needed.
+- The PC's llama-server: set the URL to <code>http://PC_IP:10000/v1</code> and turn on <strong>Allow remote model endpoint</strong>. The PC's llama-server must listen on its LAN address instead of <code>127.0.0.1</code>, and the bot replies with its model-error message whenever the PC is off.</p>
+<p>Use <strong>Test LLM</strong> and <strong>Test Telegram</strong> in the console, then send the bot a message.</p>
+<p><strong>Step 6. On the PC</strong>, stop using the Relay Station card's <strong>Start</strong> button and the <strong>Relay Station - Telegram Bot</strong> shortcut. Either one starts a second poller. Keep <code>C:\AI\TelegramBot\data\bot.db</code> for a few days as the rollback copy.</p>
+<h2 id="4-add-frigate-optional">4. Add Frigate (optional)</h2>
+<p><strong>Step 1.</strong> Edit <code>/srv/services/frigate/config/config.yml</code>: replace <code>192.0.2.10</code> and the stream paths with your camera's, and set <code>enabled: true</code>. Use the camera's low-resolution sub stream for <code>detect</code>.</p>
+<p><strong>Step 2.</strong> Put the camera login in <code>.env</code> as <code>FRIGATE_RTSP_USER</code> and <code>FRIGATE_RTSP_PASSWORD</code>. Frigate substitutes them into the config, so the password never appears in <code>config.yml</code>.</p>
+<p><strong>Step 3.</strong> Start it and read the first admin password:</p>
+<pre><code class="language-bash">sudo docker compose --profile nvr up -d
+sudo docker compose logs frigate | grep -i password
+</code></pre>
+<p><strong>Step 4.</strong> Open <code>https://192.168.1.241:8971</code> (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.</p>
+<p>Every later <code>docker compose</code> command that should start, stop, rebuild or update Frigate needs <code>--profile nvr</code>.</p>
+<p>The E5-2620 has AVX but not AVX2. Frigate's CPU object detector works without AVX2, but it is slow, which is why the template keeps detection at 5 fps on a sub stream. Leave Frigate's optional semantic search, face recognition and licence-plate features off on this CPU. If the container restarts in a loop, look for <code>Illegal instruction</code> in <code>sudo docker compose logs frigate</code>. That means a component needs a newer instruction set, so stay on the pinned version and report it instead of upgrading blind.</p>
+<h2 id="5-verify">5. Verify</h2>
+<ul>
+<li><code>sudo docker compose --profile nvr ps</code> shows every service <code>(healthy)</code>.</li>
+<li>After a planned reboot, both containers come back on their own (<code>restart: unless-stopped</code>, and Docker is enabled at boot).</li>
+<li><code>free -g</code> still shows well over 10 GiB available with everything running.</li>
+<li>Send the bot a message with the PC switched off. It replies if its model runs on the HP.</li>
+</ul>
+<h2 id="updates">Updates</h2>
+<pre><code class="language-bash">sudo git -C /opt/ai-workspace pull --ff-only
+cd ~/homelab-stack &amp;&amp; git pull --ff-only &amp;&amp; cd hp/always-on
+sudo docker compose build --pull
+sudo docker compose up -d
+</code></pre>
+<p>If you enabled Frigate, use these two lines instead of the last two. Leave them out otherwise, because <code>--profile nvr</code> starts Frigate even if it never ran before:</p>
+<pre><code class="language-bash">sudo docker compose --profile nvr build --pull &amp;&amp; sudo docker compose --profile nvr pull
+sudo docker compose --profile nvr up -d
+</code></pre>
+<p>Frigate's version is pinned in <code>.env</code> as <code>FRIGATE_VERSION</code>. Read Frigate's release notes before raising it, since config keys change between releases.</p>
+<h2 id="backups">Backups</h2>
+<p>RAID0 makes these copies the only protection. Take a consistent copy of the bot database while it runs, then copy it off the HP:</p>
+<pre><code class="language-bash">sudo apt install -y sqlite3
+sudo sh -c 'umask 077; sqlite3 /srv/services/relay-station/bot.db &quot;.backup /srv/services/backups/bot.db&quot;'
+</code></pre>
+<p>The copy holds the Telegram token and chat history, so it goes to <code>/srv/services/backups</code>, which <code>prepare-host.sh</code> creates as root-only (mode 700), and the file itself is mode 600. Copy it off the HP with <code>sudo scp</code> or over SSH to a private folder, never to a shared drive. Copy that file and <code>/srv/services/frigate/config/config.yml</code> to the PC or the Dell. Recordings are not backed up by this page.</p>
+<h2 id="roll-back">Roll back</h2>
+<ol>
+<li>On the HP: <code>sudo docker compose --profile nvr down</code>. Data folders are kept.</li>
+<li>Copy <code>/srv/services/relay-station/bot.db</code> back to <code>C:\AI\TelegramBot\data\bot.db</code> on the PC if the bot ran on the HP long enough to collect new chats.</li>
+<li>Start Relay Station from the PC dashboard again.</li>
+</ol><footer>Built from the Markdown guide in Noxy-HNR/homelab-stack. Example screenshots use local test data; the physical server checks happen during setup.</footer></main><script src="assets/guide.js"></script></body></html>
