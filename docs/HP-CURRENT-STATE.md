@@ -37,6 +37,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 - Confirm the two mapped drives reconnect after a future planned reboot.
 - Finish remaining Ubuntu updates at a convenient time, then verify installed firmware versions before choosing any update.
 - Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.
+- The always-on Docker Compose stack in `hp/always-on` (Relay Station, optional Frigate) is not installed yet. Follow [Always-on services](ALWAYS-ON.md) when ready.
 - The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.
 
 ## Installer compatibility

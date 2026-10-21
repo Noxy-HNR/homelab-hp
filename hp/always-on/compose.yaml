@@ -1,0 +1,117 @@
+# Always-on services for the HP DL360p Gen8 (Ubuntu 26.04.1, 28 GB RAM today).
+#
+#   cd hp/always-on
+#   cp .env.example .env && chmod 600 .env   # then edit .env
+#   docker compose up -d                     # Relay Station only
+#   docker compose --profile nvr up -d       # also start Frigate
+#
+# Read docs/ALWAYS-ON.md before the first start. Every bind mount lives under
+# the paths in .env, which sit on the P420i RAID0 logical drive. RAID0 has no
+# disk-failure protection, so the runbook also covers backups.
+#
+# Memory budget at 28 GB: Relay Station 512 MiB + Frigate 4 GiB. That leaves
+# about 20 GiB for the OS, Samba page cache and a CPU llama-server.
+
+name: hp-always-on
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  # Telegram bot and its console, moved off the Windows PC. The app only ever
+  # binds 127.0.0.1 and rejects non-loopback Host headers, so it uses the host
+  # network and stays loopback-only on the HP. Reach the console with
+  # `ssh -L 9095:127.0.0.1:9095 HP` and open http://127.0.0.1:9095.
+  relay-station:
+    build:
+      context: ./relay-station
+      additional_contexts:
+        app: ${AI_WORKSPACE_DIR:?set AI_WORKSPACE_DIR in .env}/TelegramBot
+    image: hp-always-on/relay-station:local
+    network_mode: host
+    restart: unless-stopped
+    # app.py cleans up (poller, SQLite, lock) on KeyboardInterrupt, not on SIGTERM.
+    stop_signal: SIGINT
+    stop_grace_period: 20s
+    user: "${RELAY_UID:-10001}:${RELAY_GID:-10001}"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      TZ: ${TZ:-UTC}
+      PYTHONUNBUFFERED: "1"
+    command: ["python", "-u", "/app/app.py", "--port", "${RELAY_PORT:-9095}", "--data", "/data"]
+    volumes:
+      - ${SERVICES_DATA_ROOT:?set SERVICES_DATA_ROOT in .env}/relay-station:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import json,sys,urllib.request as u; r=u.urlopen('http://127.0.0.1:${RELAY_PORT:-9095}/api/health',timeout=4); sys.exit(0 if json.load(r).get('service')=='relay-station' else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+          pids: 128
+        reservations:
+          memory: 128M
+    logging: *logging
+
+  # Camera recordings. Opt-in through the "nvr" profile because it needs a
+  # camera config first. CPU detection only: the HP has no GPU or Coral, so
+  # keep to one or two cameras with a 720p or smaller detect stream at 5 fps.
+  frigate:
+    profiles: [nvr]
+    image: ghcr.io/blakeblackshear/frigate:${FRIGATE_VERSION:-0.16.1}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    shm_size: ${FRIGATE_SHM_SIZE:-256mb}
+    environment:
+      TZ: ${TZ:-UTC}
+      # Frigate substitutes {FRIGATE_*} variables into config.yml, so camera
+      # passwords stay in .env and out of the config file.
+      FRIGATE_RTSP_USER: ${FRIGATE_RTSP_USER:-}
+      FRIGATE_RTSP_PASSWORD: ${FRIGATE_RTSP_PASSWORD:-}
+    volumes:
+      - ${SERVICES_DATA_ROOT}/frigate/config:/config
+      - ${FRIGATE_MEDIA_DIR:?set FRIGATE_MEDIA_DIR in .env}:/media/frigate
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      # Authenticated web UI (HTTPS, self-signed until replaced).
+      - "${HP_LAN_IP:?set HP_LAN_IP in .env}:8971:8971"
+      # Unauthenticated API, kept on the HP's loopback for the healthcheck and SSH tunnels.
+      - "127.0.0.1:5000:5000"
+      # go2rtc restream and WebRTC for live view.
+      - "${HP_LAN_IP}:8554:8554"
+      - "${HP_LAN_IP}:8555:8555/tcp"
+      - "${HP_LAN_IP}:8555:8555/udp"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:5000/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 3m
+    deploy:
+      resources:
+        limits:
+          cpus: "${FRIGATE_CPUS:-4.0}"
+          memory: ${FRIGATE_MEMORY:-4g}
+          pids: 1024
+        reservations:
+          memory: 1g
+    logging: *logging

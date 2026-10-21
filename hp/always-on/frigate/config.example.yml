@@ -1,0 +1,59 @@
+# Frigate config for the HP. prepare-host.sh copies this to
+# ${SERVICES_DATA_ROOT}/frigate/config/config.yml the first time only.
+# Edit that copy; this example stays unchanged in Git.
+#
+# The camera below is a placeholder (192.0.2.10 is a documentation address)
+# and starts disabled. Replace the address and stream paths with your camera's,
+# put its credentials in .env, then set enabled: true.
+
+mqtt:
+  enabled: false
+
+# The HP has no GPU or Coral. Two CPU detector threads fit the E5-2620 next to
+# the other services; expect roughly 1-2 cameras at 5 fps detection.
+detectors:
+  cpu1:
+    type: cpu
+    num_threads: 2
+
+# Required by Frigate 0.14+ for the authenticated UI on port 8971. The admin
+# password is printed once in the container log on first start
+# (docker compose logs frigate | grep -i password) and can be changed in the UI.
+auth:
+  enabled: true
+
+# Recordings default to the 100 GiB root LV. At ~2 Mb/s per camera, 3 days of
+# motion-only recording is roughly 20-40 GiB per camera. Frigate also deletes
+# the oldest recordings when free space runs low, but keep these bounded.
+record:
+  enabled: true
+  retain:
+    days: 3
+    mode: motion
+  alerts:
+    retain:
+      days: 14
+  detections:
+    retain:
+      days: 14
+
+snapshots:
+  enabled: true
+  retain:
+    default: 14
+
+cameras:
+  example_cam:
+    enabled: false
+    ffmpeg:
+      inputs:
+        # Main stream for recording.
+        - path: rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@192.0.2.10:554/stream1
+          roles: [record]
+        # Low-resolution sub stream for detection keeps CPU use down.
+        - path: rtsp://{FRIGATE_RTSP_USER}:{FRIGATE_RTSP_PASSWORD}@192.0.2.10:554/stream2
+          roles: [detect]
+    detect:
+      width: 1280
+      height: 720
+      fps: 5
