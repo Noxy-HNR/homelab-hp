@@ -89,12 +89,26 @@ check_model() {
     for part in "${parts[@]}"; do
       runuser -u llama -- test -r "$part" || {
         echo "The llama account cannot read $part." >&2
-        echo "Grant read access, for example: sudo setfacl -m u:llama:rX \"$(dirname "$part")\" && sudo setfacl -m u:llama:r \"$part\"" >&2
+        acl_hint "$part" >&2
         return 1
       }
     done
   fi
   echo "PASS: model file is present and fits the memory limit"
+}
+
+# Print read-only ACL grants for the llama account on every folder from the mount down to the model.
+acl_hint() {
+  local dir path=$1
+  dir=$(dirname "$path")
+  echo 'Grant read-only access (setfacl comes from the acl package, which install adds):'
+  while :; do
+    echo "  sudo setfacl -m u:llama:rx \"$dir\""
+    [[ $dir == "$models_mount" || $dir == / ]] && break
+    dir=$(dirname "$dir")
+  done
+  echo "  sudo setfacl -m u:llama:r \"$(dirname "$path")\"/*.gguf"
+  echo "  sudo setfacl -d -m u:llama:r \"$(dirname "$path")\"    # models added later"
 }
 
 health() {

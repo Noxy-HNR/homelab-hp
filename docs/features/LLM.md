@@ -16,7 +16,7 @@ This is a separate install from the web app. It is written for the **current** H
 | API key | `/etc/homelab/llama-server/api-keys`. Every request except `/health` needs it. |
 | Settings | `/etc/homelab/llama-server.env`, created from [`hp/llm/llama-server.env.example`](../../hp/llm/llama-server.env.example) |
 | Watchdog | `llama-server-health.timer` checks `/health` every two minutes. If the service has been up for 15 minutes and is still not ready, it restarts it. |
-| llama.cpp | Release `v0.7.0`, pinned to commit `620d2225`. It is built on the HP for its own CPU. |
+| llama.cpp | Release `v0.7.0`, pinned to commit `620d2225`. It is built from source on the HP with `GGML_NATIVE=ON`, so it uses the AVX the E5-2620 has and none of the AVX2, FMA or F16C it lacks. No prebuilt binary or Docker is used; the installer adds `build-essential`, `cmake`, `git` and `acl`. |
 
 ## Model choice
 
@@ -24,6 +24,7 @@ The HP has **28 GB of RAM today**, and Ubuntu sees about 26 GiB. Generation spee
 
 | When | Model | Size on disk | Active per token | Memory limit |
 | --- | --- | ---: | ---: | ---: |
+| **Now, already on the share** | `Cyber-Tiel-Coder-35B-A3B-UD-IQ3_XXS`, a coding MoE | 13 GB | about 3B | 18 GiB hard cap |
 | **Now (default)** | `gpt-oss-20b`, MXFP4 ([ggml-org/gpt-oss-20b-GGUF](https://huggingface.co/ggml-org/gpt-oss-20b-GGUF), file `gpt-oss-20b-mxfp4.gguf`) | about 13 GB | 3.6B | 18 GiB hard cap |
 | **After the 96 GB upgrade** | `gpt-oss-120b`, MXFP4 ([ggml-org/gpt-oss-120b-GGUF](https://huggingface.co/ggml-org/gpt-oss-120b-GGUF), three `gpt-oss-120b-mxfp4-0000N-of-00003.gguf` parts) | about 63 GB | 5.1B | 80 GiB hard cap |
 
@@ -52,12 +53,9 @@ On the HP, from your clone of this repo:
 
    **You should see:** the CPU line (`6 physical cores, 1 NUMA node(s)`), the RAM, and either the model's size or `Model not found yet`.
 
-2. **Put the model in place.** The installer never downloads models. The simplest way is from the Windows PC: download `gpt-oss-20b-mxfp4.gguf` from the Hugging Face page above and copy it to `M:\gpt-oss-20b\`. `M:` is the `ModelFiles` share at `/srv/models`. To download on the HP instead, run it as the account that owns `/srv/models` (shown here as `lab`). It needs the Hugging Face `hf` tool (`pipx install 'huggingface_hub[cli]'`):
+2. **Put the model in place.** The installer never downloads models. On the Windows PC, download `gpt-oss-20b-mxfp4.gguf` from the Hugging Face page above and copy it to `M:\Models\`. `M:` is the `ModelFiles` share at `/srv/models`, so the file lands at `/srv/models/Models/gpt-oss-20b-mxfp4.gguf`.
 
-   ```bash
-   sudo -u lab mkdir -p /srv/models/gpt-oss-20b
-   sudo -u lab hf download ggml-org/gpt-oss-20b-GGUF gpt-oss-20b-mxfp4.gguf --local-dir /srv/models/gpt-oss-20b
-   ```
+   To skip the download, you can start with the coding MoE that is already on the share instead. See the commented `Cyber-Tiel-Coder-35B-A3B` lines in the settings file.
 
 3. **Install.** This builds llama.cpp, which takes 10 to 20 minutes on this CPU. It creates the `llama` account, the settings file and an API key, then starts the service if the model is present:
 
@@ -65,7 +63,7 @@ On the HP, from your clone of this repo:
    sudo bash hp/llm/install-llama-server.sh install
    ```
 
-   If it says `The llama account cannot read ...`, run the `setfacl` command it prints, then run the install again.
+   The model folder is `lab:lab`, mode `2770`, so a new account cannot read it. The first install says `The llama account cannot read ...` and prints read-only `setfacl` lines for each folder level and the model files. Run them, then run the install again. They grant `llama` read access only, and the service itself also mounts `/srv/models` read-only.
 
 4. **Verify** after the model has loaded:
 
@@ -85,7 +83,7 @@ Re-running `install` is safe. It keeps your settings file and key, reuses the bu
 
 ## Upgrade to the larger model
 
-After the RAM upgrade, check that Ubuntu sees it (`free -g`). Copy the three `gpt-oss-120b` parts into `/srv/models/gpt-oss-120b/`. Then, in `/etc/homelab/llama-server.env`, replace the model, alias, context and memory lines with the commented **After the 96 GB upgrade** block and run `install` again. It applies the new memory limits and restarts the service.
+After the RAM upgrade, check that Ubuntu sees it (`free -g`). Copy the three `gpt-oss-120b` parts into `M:\Models\` (`/srv/models/Models`). Then, in `/etc/homelab/llama-server.env`, replace the model, alias, context and memory lines with the commented **After the 96 GB upgrade** block and run `install` again. It applies the new memory limits and restarts the service.
 
 ## Use it from the PCs
 
@@ -140,7 +138,7 @@ To stop LAN or tailnet devices you do not trust from reaching the port at all, r
 | `/srv/models is not mounted` | The models volume is missing. | Fix the mount first; see [HP current state](../HP-CURRENT-STATE.md). |
 | `Port 10000 is already used by ...` | Another service holds the port. The HP app uses 8088, so this should not happen by default. | Set a free `LLAMA_ARG_PORT` in the settings file. |
 | `Model not found yet` | The GGUF is not at `LLAMA_ARG_MODEL`. | Copy it there, or fix the path in the settings file. |
-| `The llama account cannot read ...` | The model folder belongs to `lab` only. | Run the `setfacl` command the installer prints. |
+| `The llama account cannot read ...` | The model folder belongs to `lab` only. | Run the `setfacl` lines the installer prints. |
 | `... larger than HOMELAB_LLAMA_MEMORY_MAX` | The model does not fit the limit. | Use the default model, or raise the limit after the RAM upgrade. |
 | `/health` stays `503` for many minutes | The first read from the array is slow, or the page cache is being evicted. | Check `free -g` and the log. The watchdog restarts the service after 15 minutes. |
 | `401` from a client | Missing or wrong key. | Send `Authorization: Bearer KEY` with the key from `/etc/homelab/llama-server/api-keys`. |
