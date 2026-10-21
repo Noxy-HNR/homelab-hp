@@ -1,5 +1,5 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HP DL360p Gen8: current deployment · Homelab</title><link rel="stylesheet" href="assets/guide.css"></head><body><aside><strong>Homelab</strong><p>Your setup guide.<br>One machine at a time.</p><a href="guide.html">Start here</a><a href="INSTALL.html">1 · Hardware & Ubuntu</a><a href="setup/HP.html">2 · HP NAS</a><a href="HP-CURRENT-STATE.html">HP current state</a><a href="setup/DELL.html">3 · Dell workbench</a><a href="setup/WINDOWS.html">4 · Windows PCs</a><a href="GAME-DRIVE.html">5 · Steam drive</a><a href="DAILY-USE.html">Use your homelab</a><a href="PARTS.html">Parts to buy</a><a href="VALIDATION.html">What is tested</a></aside><main><div class="topbar"><span>INSTALL · USE · RECOVER</span><button id="print">Print this page</button></div><h1 id="hp-dl360p-gen8-current-deployment">HP DL360p Gen8: current deployment</h1>
-<p>Last checked: <strong>2026-10-20</strong>. This is the installed machine, distinct from the future network plan in the older setup guides.</p>
+<p>Last checked: <strong>2026-10-21</strong>. This is the installed machine, distinct from the future network plan in the older setup guides.</p>
 <h2 id="hardware-and-storage">Hardware and storage</h2>
 <ul>
 <li>HP ProLiant DL360p Gen8 with the Smart Array P420i.</li>
@@ -44,21 +44,31 @@
 <li>One server network cable is in use. The last verified Ubuntu address was <code>192.168.1.241/24</code> on <code>eno1</code>.</li>
 <li>PCI inventory shows four Broadcom BCM5719 1 GbE controllers. <code>eno1</code> currently negotiates 1,000 Mb/s full duplex. This inventory did not show a 10 GbE controller.</li>
 <li>The 10 GbE switch links and any multi-link configuration are pending the required hardware and cabling. Current transfers use the single connected path.</li>
+<li>UFW is active. It allows TCP 22 (SSH), 445 (SMB) and 8088 (homelab-app) from <code>192.168.1.0/24</code> only; anything else from the LAN, including the llama-server port 10000, is blocked until a rule is added.</li>
 <li>OpenSSH is enabled and Samba is active. The current Samba shares are <code>SteamGames</code> at <code>/srv/steam</code> and <code>ModelFiles</code> at <code>/srv/models</code>, both restricted to the <code>lab</code> account. The mounted volumes currently report about 420 GiB free for Steam and 707 GiB free for models. Steam downloads are underway; the model copy to the server was checksum-verified in the earlier transfer run.</li>
 <li>On the current Windows PC, <code>S:</code> maps to <code>\\192.168.1.241\SteamGames</code> and <code>M:</code> maps to <code>\\192.168.1.241\ModelFiles</code>; both mappings report <code>OK</code>, and TCP port 445 is reachable.</li>
-<li>Password rotation is intentionally deferred.</li>
+<li>Password rotation for <code>lab</code> (Linux and Samba) is still pending.</li>
+</ul>
+<h2 id="services">Services</h2>
+<ul>
+<li>Docker 29.1 is installed. The <a href="ALWAYS-ON.html">always-on stack</a> runs Relay Station as <code>hp-always-on-relay-station-1</code> (healthy).</li>
+<li><code>llama-server.service</code> runs llama.cpp v0.7.0 (<code>/opt/llama.cpp/current</code>) as the <code>llama</code> account on port 10000 with Cyber-Tiel-Coder-35B-A3B (UD-IQ3_XXS, 13 GB) mmapped from <code>/srv/models/Models</code>. Every request except <code>/health</code> needs the key in <code>/etc/homelab/llama-server/api-keys</code>.</li>
+<li>Measured on 2026-10-21 with 6 threads: prompt processing about 12.6 tokens/s, generation about 5.2 tokens/s, and about 14.3 GB of memory in use against the 18 GB service cap.</li>
+<li>The <code>llama</code> account reads models through POSIX ACLs on <code>/srv/models</code> and <code>/srv/models/Models</code> (including a default ACL for new files). On this Ubuntu release <code>/usr/bin/test</code> comes from uutils coreutils and ignores ACLs, so <code>runuser -u llama -- test -r FILE</code> reports a false failure. Check access with <code>runuser -u llama -- head -c1 FILE</code> instead.</li>
+<li><code>homelab-app.service</code> (port 8088) and <code>smbd</code> are active.</li>
 </ul>
 <h2 id="updates-and-firmware">Updates and firmware</h2>
 <ul>
-<li>Package metadata was refreshed and one small Python package update was installed. The simulated upgrade still showed other packages held or phased, so the OS is not fully updated yet. Avoid a reboot or disruptive service restart while Steam is downloading.</li>
-<li>The system BIOS reports HP P71 dated 2019-05-24. The P420i firmware version and installed iLO 4 version have not been confirmed. Do not report those as updated.</li>
+<li>On 2026-10-21 <code>apt-get upgrade</code> had nothing it would install. The 13 remaining updates (the systemd 259.9 stack, cloud-init 26.2 and <code>ubuntu-server-minimal</code>) are Ubuntu phased updates, at 30% and 10% rollout. Unattended upgrades are enabled and will install them as the rollout reaches this machine. No reboot is pending.</li>
+<li>The last boot was 2026-10-21 02:10 UTC. After it, both Windows mappings (<code>S:</code> and <code>M:</code>) reconnected on first access.</li>
+<li>Firmware read from the running system: system BIOS <strong>P71 2019-05-24</strong>, iLO 4 <strong>2.82</strong> (from <code>ipmitool mc info</code>), Smart Array P420i <strong>3.54</strong> (from the <code>hpsa</code> driver). The controller firmware is far behind HP's last P420i release. The array is RAID0 with no redundancy, so do not flash the controller without a current backup of anything that cannot be recreated.</li>
 </ul>
 <h2 id="still-to-verify-or-decide">Still to verify or decide</h2>
 <ul>
-<li>Confirm the two mapped drives reconnect after a future planned reboot.</li>
-<li>Finish remaining Ubuntu updates at a convenient time, then verify installed firmware versions before choosing any update.</li>
+<li>Decide whether to update the P420i firmware (back up first).</li>
+<li>Decide whether to open TCP 10000 to <code>192.168.1.0/24</code> so PCs can reach llama-server.</li>
 <li>Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.</li>
-<li>The always-on Docker Compose stack in <code>hp/always-on</code> (Relay Station, optional Frigate) is not installed yet. Follow <a href="ALWAYS-ON.html">Always-on services</a> when ready.</li>
+<li>Frigate in the always-on stack is optional and not enabled. See <a href="ALWAYS-ON.html">Always-on services</a>.</li>
 <li>The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.</li>
 </ul>
 <h2 id="installer-compatibility">Installer compatibility</h2>
