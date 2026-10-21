@@ -67,54 +67,57 @@ sudo bash prepare-host.sh install      # creates /srv/services/... and the Friga
 
 Only one machine may poll a Telegram bot at a time. A second poller gets `409 Conflict` from Telegram, and the data-folder lock cannot detect another computer.
 
-1. **On the PC**, stop the bot: use **Stop** on the Relay Station card in the dashboard at `http://127.0.0.1:9090`, or run `powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1`. Confirm nothing listens on 9095: `Get-NetTCPConnection -LocalPort 9095 -State Listen` returns nothing.
-2. **Copy the database** from the PC. It holds the token, settings, users and chat history:
+**Step 1. On the PC**, stop the bot: use **Stop** on the Relay Station card in the dashboard at `http://127.0.0.1:9090`, or run `powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1`. Confirm nothing listens on 9095: `Get-NetTCPConnection -LocalPort 9095 -State Listen` returns nothing.
 
-   ```powershell
-   # HP_LOGIN is your Ubuntu login on the HP
-   scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db
-   ```
+**Step 2. Copy the database** from the PC. It holds the token, settings, users and chat history:
 
-3. **On the HP**, put it in place and start the service:
+```powershell
+# HP_LOGIN is your Ubuntu login on the HP
+scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db
+```
 
-   ```bash
-   sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db && rm /tmp/bot.db
-   cd ~/homelab-stack/hp/always-on
-   sudo docker compose build --pull
-   sudo docker compose up -d
-   sudo docker compose ps                 # relay-station shows (healthy) within a minute
-   ```
+**Step 3. On the HP**, put it in place and start the service:
 
-   To start fresh instead, skip the copy and paste the @BotFather token in Settings after step 4.
+```bash
+sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db && rm /tmp/bot.db
+cd ~/homelab-stack/hp/always-on
+sudo docker compose build --pull
+sudo docker compose up -d
+sudo docker compose ps                 # relay-station shows (healthy) within a minute
+```
 
-4. **Open the console** through SSH (replace `HP_LOGIN` with your Ubuntu login on the HP). The console is loopback-only on the HP by design and has no password of its own:
+To start fresh instead, skip the copy and paste the @BotFather token in Settings after step 4.
 
-   ```powershell
-   ssh -L 9095:127.0.0.1:9095 HP_LOGIN@192.168.1.241
-   ```
+**Step 4. Open the console** through SSH (replace `HP_LOGIN` with your Ubuntu login on the HP). The console is loopback-only on the HP by design and has no password of its own:
 
-   Then browse to `http://127.0.0.1:9095` on the PC.
+```powershell
+ssh -L 9095:127.0.0.1:9095 HP_LOGIN@192.168.1.241
+```
 
-5. **Point it at a model.** The saved LLM URL `http://127.0.0.1:10000/v1` now means the HP itself. Pick one:
-   - A llama-server on the HP: keep the loopback URL with the HP server's port. No remote setting is needed.
-   - The PC's llama-server: set the URL to `http://PC_IP:10000/v1` and turn on **Allow remote model endpoint**. The PC's llama-server must listen on its LAN address instead of `127.0.0.1`, and the bot replies with its model-error message whenever the PC is off.
+Then browse to `http://127.0.0.1:9095` on the PC.
 
-   Use **Test LLM** and **Test Telegram** in the console, then send the bot a message.
+**Step 5. Point it at a model.** The saved LLM URL `http://127.0.0.1:10000/v1` now means the HP itself. Pick one:
+- A llama-server on the HP: keep the loopback URL with the HP server's port. No remote setting is needed.
+- The PC's llama-server: set the URL to `http://PC_IP:10000/v1` and turn on **Allow remote model endpoint**. The PC's llama-server must listen on its LAN address instead of `127.0.0.1`, and the bot replies with its model-error message whenever the PC is off.
 
-6. **On the PC**, stop using the Relay Station card's **Start** button and the **Relay Station - Telegram Bot** shortcut. Either one starts a second poller. Keep `C:\AI\TelegramBot\data\bot.db` for a few days as the rollback copy.
+Use **Test LLM** and **Test Telegram** in the console, then send the bot a message.
+
+**Step 6. On the PC**, stop using the Relay Station card's **Start** button and the **Relay Station - Telegram Bot** shortcut. Either one starts a second poller. Keep `C:\AI\TelegramBot\data\bot.db` for a few days as the rollback copy.
 
 ## 4. Add Frigate (optional)
 
-1. Edit `/srv/services/frigate/config/config.yml`: replace `192.0.2.10` and the stream paths with your camera's, and set `enabled: true`. Use the camera's low-resolution sub stream for `detect`.
-2. Put the camera login in `.env` as `FRIGATE_RTSP_USER` and `FRIGATE_RTSP_PASSWORD`. Frigate substitutes them into the config, so the password never appears in `config.yml`.
-3. Start it and read the first admin password:
+**Step 1.** Edit `/srv/services/frigate/config/config.yml`: replace `192.0.2.10` and the stream paths with your camera's, and set `enabled: true`. Use the camera's low-resolution sub stream for `detect`.
 
-   ```bash
-   sudo docker compose --profile nvr up -d
-   sudo docker compose logs frigate | grep -i password
-   ```
+**Step 2.** Put the camera login in `.env` as `FRIGATE_RTSP_USER` and `FRIGATE_RTSP_PASSWORD`. Frigate substitutes them into the config, so the password never appears in `config.yml`.
 
-4. Open `https://192.168.1.241:8971` (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.
+**Step 3.** Start it and read the first admin password:
+
+```bash
+sudo docker compose --profile nvr up -d
+sudo docker compose logs frigate | grep -i password
+```
+
+**Step 4.** Open `https://192.168.1.241:8971` (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.
 
 Every later `docker compose` command needs `--profile nvr` to include Frigate.
 

@@ -19,10 +19,23 @@ if [[ ! -f $env_file ]]; then
   env_file=$here/.env.example
   echo "No .env yet; planning with .env.example values."
 fi
-set -a
-# shellcheck disable=SC1090
-source "$env_file"
-set +a
+# Read only the settings this script needs, without executing the file:
+# .env holds camera passwords and follows Compose's dotenv syntax, not Bash's.
+env_value() {
+  local line value
+  line=$(grep -E "^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*=" "$env_file" | tail -n 1) || true
+  value=${line#*=}
+  value=${value#"${value%%[![:space:]]*}"}
+  case $value in
+    \'*\') value=${value:1:${#value}-2} ;;
+    \"*\") value=${value:1:${#value}-2} ;;
+    *) value=${value%%[[:space:]]#*}; value=${value%"${value##*[![:space:]]}"} ;;
+  esac
+  printf '%s' "$value"
+}
+for var in SERVICES_DATA_ROOT AI_WORKSPACE_DIR FRIGATE_MEDIA_DIR HP_LAN_IP RELAY_UID RELAY_GID FRIGATE_MEMORY; do
+  printf -v "$var" '%s' "$(env_value "$var")"
+done
 
 [[ $(stat -c %a "$env_file") == 600 || $env_file == "$here/.env.example" ]] ||
   echo "WARN: $env_file should be mode 600 (chmod 600 $env_file)."

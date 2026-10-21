@@ -118,50 +118,36 @@ sudo bash prepare-host.sh install      # creates /srv/services/... and the Friga
 <p><code>.env</code> is ignored by Git. It holds camera credentials only. The Telegram bot token is not in <code>.env</code>; it travels inside Relay Station's database in the next step.</p>
 <h2 id="3-move-relay-station">3. Move Relay Station</h2>
 <p>Only one machine may poll a Telegram bot at a time. A second poller gets <code>409 Conflict</code> from Telegram, and the data-folder lock cannot detect another computer.</p>
-<ol>
-<li><strong>On the PC</strong>, stop the bot: use <strong>Stop</strong> on the Relay Station card in the dashboard at <code>http://127.0.0.1:9090</code>, or run <code>powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1</code>. Confirm nothing listens on 9095: <code>Get-NetTCPConnection -LocalPort 9095 -State Listen</code> returns nothing.</li>
-<li><strong>Copy the database</strong> from the PC. It holds the token, settings, users and chat history:</li>
-</ol>
-<p><code>powershell
-   # HP_LOGIN is your Ubuntu login on the HP
-   scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db</code></p>
-<ol start="3">
-<li><strong>On the HP</strong>, put it in place and start the service:</li>
-</ol>
-<p><code>bash
-   sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db &amp;&amp; rm /tmp/bot.db
-   cd ~/homelab-stack/hp/always-on
-   sudo docker compose build --pull
-   sudo docker compose up -d
-   sudo docker compose ps                 # relay-station shows (healthy) within a minute</code></p>
+<p><strong>Step 1. On the PC</strong>, stop the bot: use <strong>Stop</strong> on the Relay Station card in the dashboard at <code>http://127.0.0.1:9090</code>, or run <code>powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1</code>. Confirm nothing listens on 9095: <code>Get-NetTCPConnection -LocalPort 9095 -State Listen</code> returns nothing.</p>
+<p><strong>Step 2. Copy the database</strong> from the PC. It holds the token, settings, users and chat history:</p>
+<pre><code class="language-powershell"># HP_LOGIN is your Ubuntu login on the HP
+scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db
+</code></pre>
+<p><strong>Step 3. On the HP</strong>, put it in place and start the service:</p>
+<pre><code class="language-bash">sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db &amp;&amp; rm /tmp/bot.db
+cd ~/homelab-stack/hp/always-on
+sudo docker compose build --pull
+sudo docker compose up -d
+sudo docker compose ps                 # relay-station shows (healthy) within a minute
+</code></pre>
 <p>To start fresh instead, skip the copy and paste the @BotFather token in Settings after step 4.</p>
-<ol start="4">
-<li><strong>Open the console</strong> through SSH (replace <code>HP_LOGIN</code> with your Ubuntu login on the HP). The console is loopback-only on the HP by design and has no password of its own:</li>
-</ol>
-<p><code>powershell
-   ssh -L 9095:127.0.0.1:9095 HP_LOGIN@192.168.1.241</code></p>
+<p><strong>Step 4. Open the console</strong> through SSH (replace <code>HP_LOGIN</code> with your Ubuntu login on the HP). The console is loopback-only on the HP by design and has no password of its own:</p>
+<pre><code class="language-powershell">ssh -L 9095:127.0.0.1:9095 HP_LOGIN@192.168.1.241
+</code></pre>
 <p>Then browse to <code>http://127.0.0.1:9095</code> on the PC.</p>
-<ol start="5">
-<li><strong>Point it at a model.</strong> The saved LLM URL <code>http://127.0.0.1:10000/v1</code> now means the HP itself. Pick one:
-   - A llama-server on the HP: keep the loopback URL with the HP server's port. No remote setting is needed.
-   - The PC's llama-server: set the URL to <code>http://PC_IP:10000/v1</code> and turn on <strong>Allow remote model endpoint</strong>. The PC's llama-server must listen on its LAN address instead of <code>127.0.0.1</code>, and the bot replies with its model-error message whenever the PC is off.</li>
-</ol>
+<p><strong>Step 5. Point it at a model.</strong> The saved LLM URL <code>http://127.0.0.1:10000/v1</code> now means the HP itself. Pick one:
+- A llama-server on the HP: keep the loopback URL with the HP server's port. No remote setting is needed.
+- The PC's llama-server: set the URL to <code>http://PC_IP:10000/v1</code> and turn on <strong>Allow remote model endpoint</strong>. The PC's llama-server must listen on its LAN address instead of <code>127.0.0.1</code>, and the bot replies with its model-error message whenever the PC is off.</p>
 <p>Use <strong>Test LLM</strong> and <strong>Test Telegram</strong> in the console, then send the bot a message.</p>
-<ol start="6">
-<li><strong>On the PC</strong>, stop using the Relay Station card's <strong>Start</strong> button and the <strong>Relay Station - Telegram Bot</strong> shortcut. Either one starts a second poller. Keep <code>C:\AI\TelegramBot\data\bot.db</code> for a few days as the rollback copy.</li>
-</ol>
+<p><strong>Step 6. On the PC</strong>, stop using the Relay Station card's <strong>Start</strong> button and the <strong>Relay Station - Telegram Bot</strong> shortcut. Either one starts a second poller. Keep <code>C:\AI\TelegramBot\data\bot.db</code> for a few days as the rollback copy.</p>
 <h2 id="4-add-frigate-optional">4. Add Frigate (optional)</h2>
-<ol>
-<li>Edit <code>/srv/services/frigate/config/config.yml</code>: replace <code>192.0.2.10</code> and the stream paths with your camera's, and set <code>enabled: true</code>. Use the camera's low-resolution sub stream for <code>detect</code>.</li>
-<li>Put the camera login in <code>.env</code> as <code>FRIGATE_RTSP_USER</code> and <code>FRIGATE_RTSP_PASSWORD</code>. Frigate substitutes them into the config, so the password never appears in <code>config.yml</code>.</li>
-<li>Start it and read the first admin password:</li>
-</ol>
-<p><code>bash
-   sudo docker compose --profile nvr up -d
-   sudo docker compose logs frigate | grep -i password</code></p>
-<ol start="4">
-<li>Open <code>https://192.168.1.241:8971</code> (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.</li>
-</ol>
+<p><strong>Step 1.</strong> Edit <code>/srv/services/frigate/config/config.yml</code>: replace <code>192.0.2.10</code> and the stream paths with your camera's, and set <code>enabled: true</code>. Use the camera's low-resolution sub stream for <code>detect</code>.</p>
+<p><strong>Step 2.</strong> Put the camera login in <code>.env</code> as <code>FRIGATE_RTSP_USER</code> and <code>FRIGATE_RTSP_PASSWORD</code>. Frigate substitutes them into the config, so the password never appears in <code>config.yml</code>.</p>
+<p><strong>Step 3.</strong> Start it and read the first admin password:</p>
+<pre><code class="language-bash">sudo docker compose --profile nvr up -d
+sudo docker compose logs frigate | grep -i password
+</code></pre>
+<p><strong>Step 4.</strong> Open <code>https://192.168.1.241:8971</code> (self-signed certificate), sign in and change the password. Port 5000, the unauthenticated API, is bound to the HP's loopback only.</p>
 <p>Every later <code>docker compose</code> command needs <code>--profile nvr</code> to include Frigate.</p>
 <h2 id="5-verify">5. Verify</h2>
 <ul>
