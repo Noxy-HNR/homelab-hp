@@ -39,6 +39,7 @@ Clone the public repository listed in the table above into a directory named `ho
 | Set up or fix a Windows PC | [Windows page](docs/setup/WINDOWS.md) |
 | Switch the Steam drive between PCs | [Game drive guide](docs/GAME-DRIVE.md) |
 | Back up and restore | [Backups](docs/features/OPERATIONS.md) |
+| Run a language model on the HP's CPU | [CPU model server](docs/features/LLM.md) |
 | See what each installer adds | [Stack](docs/STACK.md) |
 
 ## Upgrade

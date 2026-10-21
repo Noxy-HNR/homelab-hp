@@ -33,6 +33,7 @@ $sources | Where-Object Extension -eq '.py' | ForEach-Object {
 }
 Invoke-Checked 'LIO offline tests' $python @((Join-Path $root 'hp\test_lio_check.py'))
 Invoke-Checked 'Steam handoff offline tests' $python @((Join-Path $root 'hp\iscsi\test_game_lun_controller.py'))
+Invoke-Checked 'llama-server settings offline tests' $python @((Join-Path $root 'hp\llm\test_llama_config.py'))
 Invoke-Checked 'Handoff SSH identity test' $bash @((Join-Path $root 'tests\test_install_controller_identities.sh'))
 Invoke-Checked 'Docs and examples' $python @((Join-Path $root 'tests\verify_docs.py'))
 Invoke-Checked 'Mocked Windows client guards' 'powershell.exe' @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $root 'tests\windows-offline.ps1'))

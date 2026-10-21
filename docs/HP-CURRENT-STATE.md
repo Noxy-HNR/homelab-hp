@@ -47,6 +47,7 @@ The Steam and models areas are separate logical volumes on the **same RAID0 arra
 - Decide whether to update the P420i firmware (back up first).
 - Decide whether to open TCP 10000 to `192.168.1.0/24` so PCs can reach llama-server.
 - Add and configure the 10 GbE links after the switch materials arrive; until then, keep the working single-cable connection.
+- The CPU model server (`llama-server`, [CPU model server](features/LLM.md)) was deployed on 2026-10-21 with the `Cyber-Tiel-Coder-35B-A3B` model already on the share. Port 10000 needs a `ufw` rule for the LAN; re-running its installer adds one.
 - Frigate in the always-on stack is optional and not enabled. See [Always-on services](ALWAYS-ON.md).
 - The dashboard, Cockpit, Restic backup plans, and managed iSCSI handoff controller are not confirmed as installed. Decide whether they are wanted for this build before installing them.
 
