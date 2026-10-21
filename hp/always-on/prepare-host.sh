@@ -27,10 +27,11 @@ env_value() {
   value=${line#*=}
   value=${value#"${value%%[![:space:]]*}"}
   case $value in
-    \'*\') value=${value:1:${#value}-2} ;;
-    \"*\") value=${value:1:${#value}-2} ;;
+    \'*) value=${value:1}; value=${value%%\'*} ;;
+    \"*) value=${value:1}; value=${value%%\"*} ;;
     *) value=${value%%[[:space:]]#*}; value=${value%"${value##*[![:space:]]}"} ;;
   esac
+  [[ $value != *\$\{* ]] || { echo "$1 uses \${...} interpolation; write the literal path in $env_file" >&2; exit 1; }
   printf '%s' "$value"
 }
 for var in SERVICES_DATA_ROOT AI_WORKSPACE_DIR FRIGATE_MEDIA_DIR HP_LAN_IP RELAY_UID RELAY_GID FRIGATE_MEMORY; do
@@ -59,13 +60,14 @@ echo "Memory: $(free -g | awk '/^Mem:/ {print $2" GiB total, "$7" GiB available"
 
 dirs=("$SERVICES_DATA_ROOT/relay-station" "$SERVICES_DATA_ROOT/frigate/config" "$FRIGATE_MEDIA_DIR")
 if [[ $action == plan ]]; then
-  printf 'Would create (if missing): %s\n' "${dirs[@]}"
+  printf 'Would create (if missing): %s\n' "${dirs[@]}" "$SERVICES_DATA_ROOT/backups (root only)"
   echo "Would copy frigate/config.example.yml to $SERVICES_DATA_ROOT/frigate/config/config.yml if missing."
   exit 0
 fi
 
 [[ $EUID -eq 0 ]] || { echo 'Run install with sudo.' >&2; exit 1; }
 install -d -m 755 "$SERVICES_DATA_ROOT" "$SERVICES_DATA_ROOT/frigate" "${dirs[@]:1}"
+install -d -m 700 "$SERVICES_DATA_ROOT/backups"
 install -d -m 700 -o "${RELAY_UID:-10001}" -g "${RELAY_GID:-10001}" "${dirs[0]}"
 chown -R "${RELAY_UID:-10001}:${RELAY_GID:-10001}" "${dirs[0]}"
 config=$SERVICES_DATA_ROOT/frigate/config/config.yml

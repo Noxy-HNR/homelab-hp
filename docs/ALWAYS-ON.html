@@ -119,6 +119,7 @@ sudo bash prepare-host.sh install      # creates /srv/services/... and the Friga
 </code></pre>
 <p><code>.env</code> is ignored by Git. It holds camera credentials only. The Telegram bot token is not in <code>.env</code>; it travels inside Relay Station's database in the next step.</p>
 <h2 id="3-move-relay-station">3. Move Relay Station</h2>
+<p>The commands below use the default <code>SERVICES_DATA_ROOT=/srv/services</code> and <code>RELAY_UID</code>/<code>RELAY_GID</code> of 10001. If you changed those in <code>.env</code>, change the paths and the <code>-o</code>/<code>-g</code> numbers in the same way, here and in the backup and rollback sections.</p>
 <p>Only one machine may poll a Telegram bot at a time. A second poller gets <code>409 Conflict</code> from Telegram, and the data-folder lock cannot detect another computer.</p>
 <p><strong>Step 1. On the PC</strong>, stop the bot: use <strong>Stop</strong> on the Relay Station card in the dashboard at <code>http://127.0.0.1:9090</code>, or run <code>powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1</code>. Confirm nothing listens on 9095: <code>Get-NetTCPConnection -LocalPort 9095 -State Listen</code> returns nothing.</p>
 <p><strong>Step 2. Copy the database</strong> from the PC. It holds the token, settings, users and chat history:</p>
@@ -162,17 +163,20 @@ sudo docker compose logs frigate | grep -i password
 <h2 id="updates">Updates</h2>
 <pre><code class="language-bash">sudo git -C /opt/ai-workspace pull --ff-only
 cd ~/homelab-stack &amp;&amp; git pull --ff-only &amp;&amp; cd hp/always-on
-sudo docker compose --profile nvr build --pull
-sudo docker compose --profile nvr pull
+sudo docker compose build --pull
+sudo docker compose up -d
+</code></pre>
+<p>If you enabled Frigate, use these two lines instead of the last two. Leave them out otherwise, because <code>--profile nvr</code> starts Frigate even if it never ran before:</p>
+<pre><code class="language-bash">sudo docker compose --profile nvr build --pull &amp;&amp; sudo docker compose --profile nvr pull
 sudo docker compose --profile nvr up -d
 </code></pre>
 <p>Frigate's version is pinned in <code>.env</code> as <code>FRIGATE_VERSION</code>. Read Frigate's release notes before raising it, since config keys change between releases.</p>
 <h2 id="backups">Backups</h2>
 <p>RAID0 makes these copies the only protection. Take a consistent copy of the bot database while it runs, then copy it off the HP:</p>
 <pre><code class="language-bash">sudo apt install -y sqlite3
-sudo sqlite3 /srv/services/relay-station/bot.db &quot;.backup '/srv/services/relay-station-backup.db'&quot;
+sudo sh -c 'umask 077; sqlite3 /srv/services/relay-station/bot.db &quot;.backup /srv/services/backups/bot.db&quot;'
 </code></pre>
-<p>Copy that file and <code>/srv/services/frigate/config/config.yml</code> to the PC or the Dell. Recordings are not backed up by this page.</p>
+<p>The copy holds the Telegram token and chat history, so it goes to <code>/srv/services/backups</code>, which <code>prepare-host.sh</code> creates as root-only (mode 700), and the file itself is mode 600. Copy it off the HP with <code>sudo scp</code> or over SSH to a private folder, never to a shared drive. Copy that file and <code>/srv/services/frigate/config/config.yml</code> to the PC or the Dell. Recordings are not backed up by this page.</p>
 <h2 id="roll-back">Roll back</h2>
 <ol>
 <li>On the HP: <code>sudo docker compose --profile nvr down</code>. Data folders are kept.</li>

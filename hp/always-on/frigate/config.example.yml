@@ -23,19 +23,21 @@ auth:
   enabled: true
 
 # Recordings default to the 100 GiB root LV. At ~2 Mb/s per camera, 3 days of
-# motion-only recording is roughly 20-40 GiB per camera. Frigate also deletes
+# motion-only and event recording is roughly 20-40 GiB per camera. Frigate also deletes
 # the oldest recordings when free space runs low, but keep these bounded.
 record:
   enabled: true
   retain:
     days: 3
     mode: motion
+  # Event footage is kept separately from continuous recording, so cap it
+  # too. Raise these only with recordings on their own logical volume.
   alerts:
     retain:
-      days: 14
+      days: 3
   detections:
     retain:
-      days: 14
+      days: 3
 
 snapshots:
   enabled: true

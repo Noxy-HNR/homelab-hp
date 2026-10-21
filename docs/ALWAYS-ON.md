@@ -69,6 +69,8 @@ sudo bash prepare-host.sh install      # creates /srv/services/... and the Friga
 
 ## 3. Move Relay Station
 
+The commands below use the default `SERVICES_DATA_ROOT=/srv/services` and `RELAY_UID`/`RELAY_GID` of 10001. If you changed those in `.env`, change the paths and the `-o`/`-g` numbers in the same way, here and in the backup and rollback sections.
+
 Only one machine may poll a Telegram bot at a time. A second poller gets `409 Conflict` from Telegram, and the data-folder lock cannot detect another computer.
 
 **Step 1. On the PC**, stop the bot: use **Stop** on the Relay Station card in the dashboard at `http://127.0.0.1:9090`, or run `powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1`. Confirm nothing listens on 9095: `Get-NetTCPConnection -LocalPort 9095 -State Listen` returns nothing.
@@ -139,8 +141,14 @@ The E5-2620 has AVX but not AVX2. Frigate's CPU object detector works without AV
 ```bash
 sudo git -C /opt/ai-workspace pull --ff-only
 cd ~/homelab-stack && git pull --ff-only && cd hp/always-on
-sudo docker compose --profile nvr build --pull
-sudo docker compose --profile nvr pull
+sudo docker compose build --pull
+sudo docker compose up -d
+```
+
+If you enabled Frigate, use these two lines instead of the last two. Leave them out otherwise, because `--profile nvr` starts Frigate even if it never ran before:
+
+```bash
+sudo docker compose --profile nvr build --pull && sudo docker compose --profile nvr pull
 sudo docker compose --profile nvr up -d
 ```
 
@@ -152,10 +160,10 @@ RAID0 makes these copies the only protection. Take a consistent copy of the bot 
 
 ```bash
 sudo apt install -y sqlite3
-sudo sqlite3 /srv/services/relay-station/bot.db ".backup '/srv/services/relay-station-backup.db'"
+sudo sh -c 'umask 077; sqlite3 /srv/services/relay-station/bot.db ".backup /srv/services/backups/bot.db"'
 ```
 
-Copy that file and `/srv/services/frigate/config/config.yml` to the PC or the Dell. Recordings are not backed up by this page.
+The copy holds the Telegram token and chat history, so it goes to `/srv/services/backups`, which `prepare-host.sh` creates as root-only (mode 700), and the file itself is mode 600. Copy it off the HP with `sudo scp` or over SSH to a private folder, never to a shared drive. Copy that file and `/srv/services/frigate/config/config.yml` to the PC or the Dell. Recordings are not backed up by this page.
 
 ## Roll back
 
