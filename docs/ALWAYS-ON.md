@@ -78,17 +78,20 @@ Only one machine may poll a Telegram bot at a time. A second poller gets `409 Co
 **Step 2. Copy the database** from the PC. It holds the token, settings, users and chat history:
 
 ```powershell
-# HP_LOGIN is your Ubuntu login on the HP
-scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db
+# HP_LOGIN is your Ubuntu login on the HP. The staging folder is private to that login.
+ssh HP_LOGIN@192.168.1.241 "install -d -m 700 ~/relay-migrate"
+scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:relay-migrate/bot.db
 ```
 
 **Step 3. On the HP**, put it in place and start the service:
 
 ```bash
 cd ~/homelab-stack/hp/always-on
-sudo docker compose build --pull       # build first, so a failed build leaves nothing half-moved
-sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db && rm /tmp/bot.db
-sudo docker compose up -d
+# Each step runs only if the one before it worked, so a failed build moves nothing.
+sudo docker compose build --pull &&
+  sudo install -m 600 -o 10001 -g 10001 ~/relay-migrate/bot.db /srv/services/relay-station/bot.db &&
+  rm -r ~/relay-migrate &&
+  sudo docker compose up -d
 sudo docker compose ps                 # relay-station shows (healthy) within a minute
 ```
 

@@ -123,14 +123,17 @@ sudo bash prepare-host.sh install      # creates /srv/services/... and the Friga
 <p>Only one machine may poll a Telegram bot at a time. A second poller gets <code>409 Conflict</code> from Telegram, and the data-folder lock cannot detect another computer.</p>
 <p><strong>Step 1. On the PC</strong>, stop the bot: use <strong>Stop</strong> on the Relay Station card in the dashboard at <code>http://127.0.0.1:9090</code>, or run <code>powershell -File C:\AI\TelegramBot\stop-telegram-bot.ps1</code>. Confirm nothing listens on 9095: <code>Get-NetTCPConnection -LocalPort 9095 -State Listen</code> returns nothing.</p>
 <p><strong>Step 2. Copy the database</strong> from the PC. It holds the token, settings, users and chat history:</p>
-<pre><code class="language-powershell"># HP_LOGIN is your Ubuntu login on the HP
-scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:/tmp/bot.db
+<pre><code class="language-powershell"># HP_LOGIN is your Ubuntu login on the HP. The staging folder is private to that login.
+ssh HP_LOGIN@192.168.1.241 &quot;install -d -m 700 ~/relay-migrate&quot;
+scp C:\AI\TelegramBot\data\bot.db HP_LOGIN@192.168.1.241:relay-migrate/bot.db
 </code></pre>
 <p><strong>Step 3. On the HP</strong>, put it in place and start the service:</p>
 <pre><code class="language-bash">cd ~/homelab-stack/hp/always-on
-sudo docker compose build --pull       # build first, so a failed build leaves nothing half-moved
-sudo install -m 600 -o 10001 -g 10001 /tmp/bot.db /srv/services/relay-station/bot.db &amp;&amp; rm /tmp/bot.db
-sudo docker compose up -d
+# Each step runs only if the one before it worked, so a failed build moves nothing.
+sudo docker compose build --pull &amp;&amp;
+  sudo install -m 600 -o 10001 -g 10001 ~/relay-migrate/bot.db /srv/services/relay-station/bot.db &amp;&amp;
+  rm -r ~/relay-migrate &amp;&amp;
+  sudo docker compose up -d
 sudo docker compose ps                 # relay-station shows (healthy) within a minute
 </code></pre>
 <p>To start fresh instead, skip the copy and paste the @BotFather token in Settings after step 4.</p>

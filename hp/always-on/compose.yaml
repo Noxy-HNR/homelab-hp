@@ -77,9 +77,9 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
     shm_size: ${FRIGATE_SHM_SIZE:-256mb}
-    # The upstream image runs its s6 supervisor as root, so it cannot use the
-    # non-root, read-only and cap_drop settings Relay Station has. It is not
-    # privileged and gets no host devices; this blocks setuid escalation.
+    # The upstream image runs its s6 supervisor as root, so it cannot take a
+    # non-root user. cap_drop and a read-only rootfs are untested with that
+    # image and left off. It is not privileged and gets no host devices.
     security_opt: ["no-new-privileges:true"]
     environment:
       TZ: ${TZ:-UTC}

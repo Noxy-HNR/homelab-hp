@@ -35,7 +35,11 @@ env_value() {
   printf '%s' "$value"
 }
 for var in SERVICES_DATA_ROOT AI_WORKSPACE_DIR FRIGATE_MEDIA_DIR HP_LAN_IP RELAY_UID RELAY_GID FRIGATE_MEMORY; do
-  printf -v "$var" '%s' "$(env_value "$var")"
+  value=$(env_value "$var") || exit 1
+  printf -v "$var" '%s' "$value"
+done
+for var in RELAY_UID RELAY_GID; do
+  [[ -z ${!var} || ${!var} =~ ^[0-9]+$ ]] || { echo "$var must be a number in $env_file" >&2; exit 1; }
 done
 
 [[ $(stat -c %a "$env_file") == 600 || $env_file == "$here/.env.example" ]] ||
